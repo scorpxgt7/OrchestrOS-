@@ -190,7 +190,10 @@ export function AutomationView() {
               Linear Editor
             </button>
           </div>
-          <button className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 shadow-sm">
+          <button 
+            type="button" disabled title="Coming soon"
+            className="px-4 py-2.5 bg-blue-600/50 cursor-not-allowed text-white/50 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+          >
             <Save className="w-4 h-4" />
             Save Automation
           </button>
@@ -437,7 +440,10 @@ export function AutomationView() {
                   <div className="absolute -left-[67px] -top-2 w-10 h-10 rounded-full bg-[var(--bg-surface)] border-2 border-[var(--border-base)] flex items-center justify-center">
                     <Plus className="w-5 h-5 text-[var(--text-tertiary)]" />
                   </div>
-                  <button className="border-2 border-dashed border-[var(--border-base)] hover:border-blue-500/50 text-[var(--text-tertiary)] hover:text-blue-400 bg-[var(--bg-base)] hover:bg-blue-500/5 rounded-2xl px-6 py-4 text-sm font-bold transition-all w-full flex items-center justify-center gap-2">
+                  <button 
+                    type="button" disabled title="Coming soon"
+                    className="border-2 border-dashed border-[var(--border-base)] cursor-not-allowed text-[var(--text-tertiary)]/50 bg-[var(--bg-base)] rounded-2xl px-6 py-4 text-sm font-bold transition-all w-full flex items-center justify-center gap-2"
+                  >
                     Add Step
                   </button>
                 </div>

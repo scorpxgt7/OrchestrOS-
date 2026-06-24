@@ -84,11 +84,17 @@ export function ApprovalQueueView() {
               </p>
               
               <div className="flex gap-4 relative z-10">
-                <button className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
+                <button 
+                  type="button" disabled title="Coming soon"
+                  className="px-5 py-2.5 bg-blue-600/50 cursor-not-allowed text-white/70 font-semibold rounded-lg text-sm transition-all flex items-center gap-2"
+                >
                   <Sparkles className="w-4 h-4" />
                   Configure Auto-Approvals
                 </button>
-                <button className="px-5 py-2.5 bg-[var(--bg-base)] hover:bg-[var(--border-base)] border border-[var(--border-base)] text-[var(--text-primary)] font-medium rounded-lg text-sm transition-all">
+                <button 
+                  type="button" disabled title="Coming soon"
+                  className="px-5 py-2.5 bg-[var(--bg-base)]/50 cursor-not-allowed border border-[var(--border-base)] text-[var(--text-primary)]/50 font-medium rounded-lg text-sm transition-all"
+                >
                   View Audit Logs
                 </button>
               </div>
@@ -139,15 +145,24 @@ export function ApprovalQueueView() {
                       </div>
 
                       <div className="flex gap-3 pt-2">
-                        <button className="flex-1 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+                        <button 
+                          type="button" disabled title="Coming soon"
+                          className="flex-1 bg-emerald-600/5 cursor-not-allowed text-emerald-400/50 border border-emerald-500/10 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                        >
                           <Check className="w-4 h-4" />
                           Approve & Execute
                         </button>
-                        <button className="flex-1 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/20 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+                        <button 
+                          type="button" disabled title="Coming soon"
+                          className="flex-1 bg-rose-600/5 cursor-not-allowed text-rose-400/50 border border-rose-500/10 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                        >
                           <X className="w-4 h-4" />
                           Deny & Halt
                         </button>
-                        <button className="flex-1 bg-[var(--bg-surface)] hover:bg-[#27272a] text-[var(--text-secondary)] border border-[var(--border-base)] py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+                        <button 
+                          type="button" disabled title="Coming soon"
+                          className="flex-1 bg-[var(--bg-surface)]/50 cursor-not-allowed text-[var(--text-secondary)]/50 border border-[var(--border-base)] py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                        >
                           <Edit3 className="w-4 h-4" />
                           Modify Request
                         </button>

@@ -376,7 +376,12 @@ export function DashboardView() {
             <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
               <h4 className="text-sm font-medium text-blue-300 mb-2">Optimization Suggested</h4>
               <p className="text-sm text-[var(--text-secondary)]">Local LLM pool is underutilized. Shifting 30% of classification tasks from remote agents could save approx. $140/day without latency impact.</p>
-              <button className="mt-3 px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs font-medium rounded transition-colors">Apply Policy</button>
+              <button 
+                type="button" disabled title="Coming soon"
+                className="mt-3 px-3 py-1.5 bg-blue-500/10 cursor-not-allowed text-blue-300/50 text-xs font-medium rounded transition-colors"
+              >
+                Apply Policy
+              </button>
             </div>
             
             <div className="p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-base)]">

@@ -184,9 +184,14 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
             </div>
           </div>
 
-          <button className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-[var(--text-base)] font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(37,99,235,0.2)] flex items-center justify-center gap-2">
+          <button 
+            type="button"
+            disabled
+            title="Agent provisioning requires backend integration (Coming Soon)"
+            className="w-full py-3 bg-blue-600/50 cursor-not-allowed text-[var(--text-base)] font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+          >
             <Brain className="w-5 h-5" />
-            Provision Agent
+            Provision Agent (Coming Soon)
           </button>
         </div>
       </div>

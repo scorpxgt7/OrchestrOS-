@@ -161,7 +161,12 @@ export function GovernanceView() {
               <Lock className="w-5 h-5 text-blue-400" />
               Active Policies
             </h3>
-            <button className="text-sm text-blue-400 hover:text-blue-300 font-medium">Add Policy</button>
+            <button 
+              type="button" disabled title="Coming soon"
+              className="text-sm text-blue-400/50 cursor-not-allowed font-medium"
+            >
+              Add Policy
+            </button>
           </div>
           
           <div className="space-y-3">
