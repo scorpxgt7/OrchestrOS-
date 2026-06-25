@@ -1,7 +1,8 @@
-import { X, Activity, AlertTriangle, CheckCircle2, ShieldAlert, Network, Cpu } from 'lucide-react';
+import { X, Activity, AlertTriangle, CheckCircle2, ShieldAlert, Network, Cpu, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { fetchApi } from '../lib/api';
+import { useToast } from '../contexts/ToastContext';
 
 interface GlobalActivityFeedProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface GlobalActivityFeedProps {
 export function GlobalActivityFeed({ isOpen, onClose }: GlobalActivityFeedProps) {
   const [logs, setLogs] = useState<any[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchApi('/agents').then(setAgents);
@@ -47,6 +49,21 @@ export function GlobalActivityFeed({ isOpen, onClose }: GlobalActivityFeedProps)
     };
   }, [isOpen]);
 
+  const handleExport = () => {
+    try {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", `system_activity_logs_${new Date().toISOString()}.json`);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      showToast("Activity logs exported successfully", "success");
+    } catch (err) {
+      showToast("Failed to export logs", "error");
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -74,12 +91,21 @@ export function GlobalActivityFeed({ isOpen, onClose }: GlobalActivityFeedProps)
                 <Activity className="w-5 h-5 text-blue-400" />
                 <h2 className="font-bold">Global Activity Feed</h2>
               </div>
-              <button
-                onClick={onClose}
-                className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-base)] rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExport}
+                  title="Export Logs as JSON"
+                  className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={onClose}
+                  className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-base)] rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Feed Content */}

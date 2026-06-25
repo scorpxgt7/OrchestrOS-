@@ -22,6 +22,7 @@ import { fetchApi } from './lib/api';
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [theme, setTheme] = useState('theme-default');
+  const [accentColor, setAccentColor] = useState('accent-blue');
   const [isNavigating, setIsNavigating] = useState(false);
   const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
@@ -34,6 +35,13 @@ export default function App() {
         console.log('init status:', initRes.status);
         const seedRes = await fetchApi('/seed', { method: 'POST' });
         console.log('seed res:', seedRes);
+        
+        // Fetch organization settings to apply theme and accent color globally on load
+        const org = await fetchApi('/organizations/current');
+        if (org?.settings) {
+          if (org.settings.theme) setTheme(org.settings.theme);
+          if (org.settings.accentColor) setAccentColor(org.settings.accentColor);
+        }
       } catch (err) {
         console.error('App init/seed error:', err);
       } finally {
@@ -92,7 +100,7 @@ export default function App() {
       case 'evaluations':
         return <EvaluationsView />;
       case 'settings':
-        return <SettingsView theme={theme} setTheme={setTheme} />;
+        return <SettingsView theme={theme} setTheme={setTheme} accentColor={accentColor} setAccentColor={setAccentColor} />;
       case 'architecture':
         return <ArchitectureView />;
       default:
@@ -108,7 +116,7 @@ export default function App() {
   };
 
   return (
-    <div className={`flex h-screen bg-[var(--bg-base)] text-[var(--text-base)] overflow-hidden font-sans selection:bg-blue-500/30 ${theme}`}>
+    <div className={`flex h-screen bg-[var(--bg-base)] text-[var(--text-base)] overflow-hidden font-sans selection:bg-blue-500/30 ${theme} ${accentColor}`}>
       <Sidebar currentView={currentView} onViewChange={handleViewChange} />
       <main className="flex-1 overflow-y-auto bg-[var(--bg-base)] border-l border-[var(--border-base)] shadow-2xl relative flex flex-col">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-[var(--bg-base)] to-[var(--bg-base)] pointer-events-none" />

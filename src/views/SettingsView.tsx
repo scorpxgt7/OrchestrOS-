@@ -1,18 +1,22 @@
 import { Sliders, Cpu, Activity, Server, RadioReceiver, Palette } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { fetchApi } from '../lib/api';
+import { useToast } from '../contexts/ToastContext';
 
 interface SettingsViewProps {
   theme?: string;
   setTheme?: (theme: string) => void;
+  accentColor?: string;
+  setAccentColor?: (color: string) => void;
 }
 
-export function SettingsView({ theme = 'theme-default', setTheme }: SettingsViewProps) {
+export function SettingsView({ theme = 'theme-default', setTheme, accentColor = 'accent-blue', setAccentColor }: SettingsViewProps) {
   const [riskThreshold, setRiskThreshold] = useState(75);
   const [primaryModel, setPrimaryModel] = useState('Gemini 1.5 Pro');
   const [costPreference, setCostPreference] = useState('Balanced');
   const [dualApproval, setDualApproval] = useState(false);
   const [autoRemediate, setAutoRemediate] = useState(true);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchApi('/organizations/current').then((org: any) => {
@@ -23,6 +27,7 @@ export function SettingsView({ theme = 'theme-default', setTheme }: SettingsView
         if (org.settings.dualApproval !== undefined) setDualApproval(org.settings.dualApproval);
         if (org.settings.autoRemediate !== undefined) setAutoRemediate(org.settings.autoRemediate);
         if (org.settings.theme && setTheme) setTheme(org.settings.theme);
+        if (org.settings.accentColor && setAccentColor) setAccentColor(org.settings.accentColor);
       }
     });
   }, []);
@@ -36,8 +41,10 @@ export function SettingsView({ theme = 'theme-default', setTheme }: SettingsView
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings: newSettings })
       });
+      showToast(`Settings updated successfully`, 'success');
     } catch (e) {
       console.error('Failed to update setting', e);
+      showToast('Failed to update setting', 'error');
     }
   };
 
@@ -46,10 +53,23 @@ export function SettingsView({ theme = 'theme-default', setTheme }: SettingsView
     updateSetting('theme', newTheme);
   };
 
+  const handleSetAccentColor = (newColor: string) => {
+    if (setAccentColor) setAccentColor(newColor);
+    updateSetting('accentColor', newColor);
+  };
+
   const themeOptions = [
     { id: 'theme-default', label: 'Default Dark' },
     { id: 'theme-high-contrast', label: 'High Contrast' },
     { id: 'theme-blueprint', label: 'Blueprint' },
+  ];
+
+  const accentOptions = [
+    { id: 'accent-blue', label: 'Blue', colorClass: 'bg-blue-500' },
+    { id: 'accent-emerald', label: 'Emerald', colorClass: 'bg-emerald-500' },
+    { id: 'accent-purple', label: 'Purple', colorClass: 'bg-purple-500' },
+    { id: 'accent-rose', label: 'Rose', colorClass: 'bg-rose-500' },
+    { id: 'accent-amber', label: 'Amber', colorClass: 'bg-amber-500' },
   ];
 
   return (
@@ -118,23 +138,48 @@ export function SettingsView({ theme = 'theme-default', setTheme }: SettingsView
               Customize the visual interface appearance, mapping across global variables for all modules.
             </p>
             
-            <div className="space-y-3">
-              {themeOptions.map((opt) => (
-                <label key={opt.id} className={`flex items-center gap-3 w-full border px-4 py-3 rounded-lg cursor-pointer transition-colors
-                  ${theme === opt.id ? 'bg-blue-500/10 border-blue-500/30' : 'bg-[var(--bg-base)] border-[var(--border-base)] hover:border-[var(--text-tertiary)]'}`}>
-                  <input 
-                    type="radio" 
-                    name="theme" 
-                    value={opt.id} 
-                    checked={theme === opt.id}
-                    onChange={() => handleSetTheme(opt.id)}
-                    className="w-4 h-4 text-blue-500 focus:ring-blue-500 border-[var(--border-base)] bg-[var(--bg-base)]"
-                  />
-                  <span className={`text-sm font-medium ${theme === opt.id ? 'text-blue-400' : 'text-[var(--text-secondary)]'}`}>
-                    {opt.label}
-                  </span>
-                </label>
-              ))}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider block mb-2">Base Theme</label>
+                {themeOptions.map((opt) => (
+                  <label key={opt.id} className={`flex items-center gap-3 w-full border px-4 py-3 rounded-lg cursor-pointer transition-colors
+                    ${theme === opt.id ? 'bg-blue-500/10 border-blue-500/30' : 'bg-[var(--bg-base)] border-[var(--border-base)] hover:border-[var(--text-tertiary)]'}`}>
+                    <input 
+                      type="radio" 
+                      name="theme" 
+                      value={opt.id} 
+                      checked={theme === opt.id}
+                      onChange={() => handleSetTheme(opt.id)}
+                      className="w-4 h-4 text-blue-500 focus:ring-blue-500 border-[var(--border-base)] bg-[var(--bg-base)]"
+                    />
+                    <span className={`text-sm font-medium ${theme === opt.id ? 'text-blue-400' : 'text-[var(--text-secondary)]'}`}>
+                      {opt.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <label className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider block mb-2">Accent Color</label>
+                <div className="flex flex-wrap gap-3">
+                  {accentOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => handleSetAccentColor(opt.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+                        accentColor === opt.id 
+                          ? 'bg-[var(--bg-base)] border-blue-500/50 ring-1 ring-blue-500/50' 
+                          : 'bg-[var(--bg-base)] border-[var(--border-base)] hover:border-[var(--text-tertiary)]'
+                      }`}
+                    >
+                      <span className={`w-3 h-3 rounded-full ${opt.colorClass}`}></span>
+                      <span className={`text-xs font-medium ${accentColor === opt.id ? 'text-blue-400' : 'text-[var(--text-secondary)]'}`}>
+                        {opt.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

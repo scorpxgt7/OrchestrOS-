@@ -9,6 +9,49 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
   --color-text-tertiary: var(--text-tertiary);
+
+  /* Override blue to act as the primary accent color */
+  --color-blue-300: var(--accent-300, #93c5fd);
+  --color-blue-400: var(--accent-400, #60a5fa);
+  --color-blue-500: var(--accent-500, #3b82f6);
+  --color-blue-600: var(--accent-600, #2563eb);
+  --color-blue-700: var(--accent-700, #1d4ed8);
+}
+
+.accent-blue {
+  /* Default blue accent, no overrides needed as it falls back */
+}
+
+.accent-emerald {
+  --accent-300: #6ee7b7;
+  --accent-400: #34d399;
+  --accent-500: #10b981;
+  --accent-600: #059669;
+  --accent-700: #047857;
+}
+
+.accent-purple {
+  --accent-300: #d8b4fe;
+  --accent-400: #c084fc;
+  --accent-500: #a855f7;
+  --accent-600: #9333ea;
+  --accent-700: #7e22ce;
+}
+
+.accent-rose {
+  --accent-300: #fda4af;
+  --accent-400: #fb7185;
+  --accent-500: #f43f5e;
+  --accent-600: #e11d48;
+  --accent-700: #be123c;
+}
+
+.accent-amber {
+  --accent-300: #fcd34d;
+  --accent-400: #fbbf24;
+  --accent-500: #f59e0b;
+  --accent-600: #d97706;
+  --accent-700: #b45309;
 }
 
 :root,
