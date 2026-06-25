@@ -24,14 +24,26 @@ export function MemoryView() {
         category: m.category,
         content: m.content,
         schema: m.metadata?.schema || {},
-        tags: m.metadata?.tags || [],
+        tags: Array.isArray(m.metadata?.tags) ? m.metadata.tags : [],
         dept: m.metadata?.dept || 'Operations',
         size: m.metadata?.size || '1KB',
         updated: m.updatedAt || new Date().toISOString(),
         version: m.metadata?.version || 1,
-        permissions: m.metadata?.permissions || { roles: [], minAutonomy: 'Level 1', owner: 'System' },
-        versions: m.metadata?.versions || [],
-        indexing: m.metadata?.indexing || { vectorIndex: '', graphNodes: [], primaryKey: '' }
+        permissions: {
+          roles: Array.isArray(m.metadata?.permissions?.roles) ? m.metadata.permissions.roles : [],
+          minAutonomy: m.metadata?.permissions?.minAutonomy || 'Level 1',
+          owner: m.metadata?.permissions?.owner || 'System'
+        },
+        versions: Array.isArray(m.metadata?.versions) ? m.metadata.versions : [],
+        indexing: {
+          vectorIndex: m.metadata?.indexing?.vectorIndex || '',
+          graphNodes: Array.isArray(m.metadata?.indexing?.graphNodes) 
+            ? m.metadata.indexing.graphNodes 
+            : typeof m.metadata?.indexing?.graphNodes === 'string'
+              ? m.metadata.indexing.graphNodes.split(',').map((s: string) => s.trim()).filter(Boolean)
+              : [],
+          primaryKey: m.metadata?.indexing?.primaryKey || ''
+        }
       }));
       setMemories(mappedData);
       if (mappedData.length > 0) {
@@ -77,7 +89,21 @@ export function MemoryView() {
   const [playgroundStep, setPlaygroundStep] = useState<number>(0);
 
   // Computed Values
-  const selectedMemory = memories.find(m => m.id === selectedMemoryId) || memories[0];
+  const selectedMemory = memories.find(m => m.id === selectedMemoryId) || memories[0] || {
+    id: '',
+    title: 'Loading...',
+    category: 'org' as MemoryCategory,
+    content: '{}',
+    schema: {},
+    tags: [],
+    dept: '',
+    size: '',
+    updated: '',
+    version: 1,
+    permissions: { roles: [], minAutonomy: '', owner: '' },
+    versions: [],
+    indexing: { vectorIndex: '', graphNodes: [], primaryKey: '' }
+  };
 
   const filteredMemories = memories.filter(m => {
     const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase()) || 

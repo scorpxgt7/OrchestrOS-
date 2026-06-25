@@ -1,6 +1,11 @@
-import { Workflow, Play, Plus, Zap, ArrowRight, Save, Link as LinkIcon, AlertTriangle, ShieldAlert, CheckCircle2, X, Copy, History, LayoutGrid, Wand2 } from 'lucide-react';
+import { 
+  Workflow, Play, Plus, Zap, ArrowRight, Save, Link as LinkIcon, AlertTriangle, 
+  ShieldAlert, CheckCircle2, X, Copy, History, LayoutGrid, Wand2,
+  Youtube, Key, Terminal, MessageSquare, Mail, Settings, Shield, Info
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState, WheelEvent } from 'react';
+import { useState, WheelEvent, useMemo } from 'react';
+import { YouTubeAutomationComponent } from '../components/YouTubeAutomationComponent';
 
 // Simple wireframe node component
 const FlowNode = ({ 
@@ -57,11 +62,11 @@ const BezierEdge = ({ x1, y1, x2, y2, active = false }: { key?: string, x1: numb
   return (
     <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
       <path 
-        d={path} 
-        fill="none" 
-        strokeWidth={2} 
-        stroke="var(--border-base)" 
-        className="opacity-50"
+          d={path} 
+          fill="none" 
+          strokeWidth={2} 
+          stroke="var(--border-base)" 
+          className="opacity-50"
       />
       {active && (
         <motion.path 
@@ -87,25 +92,138 @@ const BezierEdge = ({ x1, y1, x2, y2, active = false }: { key?: string, x1: numb
   );
 };
 
-const initialEdges = [
-  { id: 'e1', source: 'n1', target: 'n2', active: true },
-  { id: 'e2', source: 'n2', target: 'n3', active: true },
-  { id: 'e3', source: 'n2', target: 'n4', active: false }
+const TEMPLATES = [
+  {
+    id: 'youtube-manager',
+    title: 'YouTube Channel Automator',
+    desc: 'Local Gemma model + MCP server with Google OAuth approval gates.',
+    nodes: [
+      { id: 'yn1', x: 60, y: 320, icon: Youtube, title: "YouTube Monitor", desc: "Checks recent video performances and summarizes new comments every 24h.", type: "trigger" as const, active: true },
+      { id: 'yn2', x: 440, y: 320, icon: Shield, title: "OAuth Security Gate", desc: "Routes read-only metrics automatically; flags write actions for manual approval.", type: "condition" as const },
+      { id: 'yn3', x: 820, y: 160, icon: Terminal, title: "Local Gemma LLM", desc: "Offline llama.cpp model drafts video metadata suggestions and response recommendations.", type: "agent" as const, active: true },
+      { id: 'yn4', x: 820, y: 480, icon: Key, title: "Approval Queue Gate", desc: "Pushes comments, replies, titles, and video scheduling to approval feed.", type: "action" as const }
+    ],
+    edges: [
+      { id: 'ye1', source: 'yn1', target: 'yn2', active: true },
+      { id: 'ye2', source: 'yn2', target: 'yn3', active: true },
+      { id: 'ye3', source: 'yn2', target: 'yn4', active: false }
+    ],
+    systemPrompt: `You are my local YouTube channel automation assistant.
+You may analyze, summarize, draft, and recommend actions.
+You must use tools for all YouTube actions. You do not have direct access to YouTube.
+
+Rules:
+1. Read-only actions (pull stats, performance logs, comment fetch) may run automatically.
+2. Drafting actions (draft replies, titles, descriptions, tags) may run automatically.
+3. Public / write actions (post replies, delete/moderate comments, upload videos) require explicit manual approval.
+4. Never upload, publish, delete, reply, moderate, or change metadata without approval.
+5. Always explain what action you want to take before calling a write tool.
+6. Keep an audit log of every action.
+7. Prefer conservative actions when uncertain.`,
+    tools: [
+      "youtube_get_channel_stats",
+      "youtube_list_videos",
+      "youtube_get_video_stats",
+      "youtube_list_comments",
+      "youtube_draft_comment_replies",
+      "youtube_reply_to_comment",
+      "youtube_update_video_metadata",
+      "youtube_upload_video",
+      "youtube_schedule_video",
+      "youtube_generate_report"
+    ]
+  },
+  {
+    id: 'support-router',
+    title: 'Customer Support Routing',
+    desc: 'Automatically triages incoming customer service tickets and assigns to specialty agents.',
+    nodes: [
+      { id: 'sn1', x: 60, y: 320, icon: MessageSquare, title: "Incoming Ticket", desc: "Triggers on any new priority support request ticket.", type: "trigger" as const, active: true },
+      { id: 'sn2', x: 440, y: 320, icon: AlertTriangle, title: "Sentiment Triage", desc: "Route ticket based on sentiment analysis score and urgency tier.", type: "condition" as const },
+      { id: 'sn3', x: 820, y: 160, icon: ShieldAlert, title: "Support QA Bot", desc: "Maintains initial customer interaction with pre-approved SLA templates.", type: "agent" as const, active: true },
+      { id: 'sn4', x: 820, y: 480, icon: Zap, title: "Escalate to Slack", desc: "Alert the customer success on-call engineer for critical accounts.", type: "action" as const }
+    ],
+    edges: [
+      { id: 'se1', source: 'sn1', target: 'sn2', active: true },
+      { id: 'se2', source: 'sn2', target: 'sn3', active: true },
+      { id: 'se3', source: 'sn2', target: 'sn4', active: false }
+    ],
+    systemPrompt: `You are a Customer Support Triage Agent.
+Your job is to identify high-priority or negative sentiment tickets and route them to human engineers.`,
+    tools: ["slack_post_message", "zendesk_update_ticket"]
+  },
+  {
+    id: 'incident-escalation',
+    title: 'Incident Escalation',
+    desc: 'Escalates security vulnerabilities and cloud infrastructure failures.',
+    nodes: [
+      { id: 'n1', x: 60, y: 320, icon: Play, title: "Security Alert", desc: "Listen for incoming high-severity alerts from cloud monitoring.", type: "trigger" as const, active: true },
+      { id: 'n2', x: 440, y: 320, icon: AlertTriangle, title: "Risk Assessment", desc: "If alert risk score > 75 and multiple systems affected.", type: "condition" as const },
+      { id: 'n3', x: 820, y: 160, icon: ShieldAlert, title: "Overwatch Agent", desc: "Assign incident to Overwatch for immediate containment.", type: "agent" as const, active: true },
+      { id: 'n4', x: 820, y: 480, icon: Zap, title: "Halt CI/CD Pipeline", desc: "Send signal to halt all active deployments via Webhook.", type: "action" as const }
+    ],
+    edges: [
+      { id: 'e1', source: 'n1', target: 'n2', active: true },
+      { id: 'e2', source: 'n2', target: 'n3', active: true },
+      { id: 'e3', source: 'n2', target: 'n4', active: false }
+    ],
+    systemPrompt: `You are the Incident Security Escalation Brain.
+Analyze cloud monitoring data for compromise. Execute pipeline containment on P0/P1 exploits immediately.`,
+    tools: ["pagerduty_trigger", "github_cancel_workflow"]
+  },
+  {
+    id: 'report-gen',
+    title: 'Weekly Strategic Report',
+    desc: 'Aggregates metrics and generates Weekly/Daily PDF reports.',
+    nodes: [
+      { id: 'rn1', x: 60, y: 320, icon: Play, title: "Scheduler Trigger", desc: "Runs automatically at 08:00 every Friday.", type: "trigger" as const, active: true },
+      { id: 'rn2', x: 440, y: 320, icon: AlertTriangle, title: "Metric Validation", desc: "Validates all department logs are uploaded before summarizing.", type: "condition" as const },
+      { id: 'rn3', x: 820, y: 160, icon: ShieldAlert, title: "Executive Brain", desc: "Orchestrates multi-source metric queries to build summary graphs.", type: "agent" as const, active: true },
+      { id: 'rn4', x: 820, y: 480, icon: Mail, title: "Broadcast Report", desc: "Sends weekly KPI digest email to the executives group.", type: "action" as const }
+    ],
+    edges: [
+      { id: 're1', source: 'rn1', target: 'rn2', active: true },
+      { id: 're2', source: 'rn2', target: 'rn3', active: true },
+      { id: 're3', source: 'rn2', target: 'rn4', active: false }
+    ],
+    systemPrompt: `You are the Strategic Analyst Executive Brain.
+Query performance metrics and generate the Weekly Enterprise Strategic Report.`,
+    tools: ["gmail_send_email", "database_run_queries"]
+  }
 ];
 
 export function AutomationView() {
-  const [activeTab, setActiveTab] = useState<'linear' | 'canvas'>('canvas');
+  const [activeTab, setActiveTab] = useState<'linear' | 'canvas' | 'youtube-studio'>('canvas');
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [sidebarTab, setSidebarTab] = useState<'library' | 'history'>('library');
   const [isValidating, setIsValidating] = useState(false);
   const [validationSuccess, setValidationSuccess] = useState<boolean | null>(null);
   const [scale, setScale] = useState(1);
-  const [nodes, setNodes] = useState([
-    { id: 'n1', x: 60, y: 320, icon: Play, title: "Security Alert", desc: "Listen for incoming high-severity alerts from cloud monitoring.", type: "trigger" as const, active: true },
-    { id: 'n2', x: 440, y: 320, icon: AlertTriangle, title: "Risk Assessment", desc: "If alert risk score > 75 and multiple systems affected.", type: "condition" as const },
-    { id: 'n3', x: 820, y: 160, icon: ShieldAlert, title: "Overwatch Agent", desc: "Assign incident to Overwatch for immediate containment.", type: "agent" as const, active: true },
-    { id: 'n4', x: 820, y: 480, icon: Zap, title: "Halt CI/CD Pipeline", desc: "Send signal to halt all active deployments via Webhook.", type: "action" as const }
-  ]);
+  const [activeTemplateId, setActiveTemplateId] = useState('incident-escalation');
+  
+  // Active template metadata
+  const currentTemplate = useMemo(() => {
+    return TEMPLATES.find(t => t.id === activeTemplateId) || TEMPLATES[2];
+  }, [activeTemplateId]);
+
+  const [nodes, setNodes] = useState(currentTemplate.nodes);
+  const [edges, setEdges] = useState(currentTemplate.edges);
+  const [flowTitle, setFlowTitle] = useState(currentTemplate.title);
+
+  // Load selected template
+  const handleLoadTemplate = (id: string) => {
+    const t = TEMPLATES.find(x => x.id === id) || TEMPLATES[2];
+    setActiveTemplateId(id);
+    setNodes(t.nodes);
+    setEdges(t.edges);
+    setFlowTitle(t.title);
+    setSelectedNode(null);
+    if (id === 'youtube-manager') {
+      setActiveTab('youtube-studio');
+    } else {
+      setActiveTab('canvas');
+    }
+  };
 
   const [automations, setAutomations] = useState([
     { id: 'a1', title: 'Risk Escalation', active: true },
@@ -189,6 +307,15 @@ export function AutomationView() {
             >
               Linear Editor
             </button>
+            {activeTemplateId === 'youtube-manager' && (
+              <button 
+                onClick={() => setActiveTab('youtube-studio')}
+                className={`px-4 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${activeTab === 'youtube-studio' ? 'bg-[var(--bg-base)] text-[var(--text-primary)] shadow-sm border border-[var(--border-base)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+              >
+                <Youtube className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                YouTube MCP Studio
+              </button>
+            )}
           </div>
           <button 
             type="button" disabled title="Coming soon"
@@ -243,7 +370,12 @@ export function AutomationView() {
           ) : (
             <>
               <div className="bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl py-4 px-6 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between shrink-0 gap-4 md:gap-0">
-                <input type="text" defaultValue="High-Risk Incident Escalation" className="bg-transparent text-lg font-bold text-[var(--text-base)] focus:outline-none focus:border-b focus:border-blue-500/50 pb-1 w-full md:w-96" />
+                <input 
+                  type="text" 
+                  value={flowTitle} 
+                  onChange={(e) => setFlowTitle(e.target.value)} 
+                  className="bg-transparent text-lg font-bold text-[var(--text-base)] focus:outline-none focus:border-b focus:border-blue-500/50 pb-1 w-full md:w-96" 
+                />
                 <div className="flex items-center gap-3 text-sm self-start md:self-auto">
                   <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full font-medium">
                     <CheckCircle2 className="w-4 h-4" />
@@ -254,7 +386,9 @@ export function AutomationView() {
                 </div>
               </div>
 
-              {activeTab === 'canvas' ? (
+              {activeTab === 'youtube-studio' ? (
+                <YouTubeAutomationComponent />
+              ) : activeTab === 'canvas' ? (
                 <div 
                   className="flex-1 min-h-[400px] w-full bg-[#050505] border border-[var(--border-base)] rounded-xl relative overflow-hidden shadow-inner cursor-grab active:cursor-grabbing"
                   onWheel={handleWheel}
@@ -275,7 +409,7 @@ export function AutomationView() {
                 />
                 
                 {/* Edges */}
-                {initialEdges.map(edge => {
+                {edges.map(edge => {
                   const sourceNode = nodes.find(n => n.id === edge.source);
                   const targetNode = nodes.find(n => n.id === edge.target);
                   if (!sourceNode || !targetNode) return null;
@@ -344,9 +478,15 @@ export function AutomationView() {
                              <div>
                                <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Target Agent</label>
                                <select className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50">
-                                 <option>Overwatch Agent</option>
-                                 <option>Executive Main Brain</option>
-                                 <option>Quality Assurance Bot</option>
+                                 {activeTemplateId === 'youtube-manager' ? (
+                                   <option>Local Gemma (7B) via llama.cpp</option>
+                                 ) : (
+                                   <>
+                                     <option>Overwatch Agent</option>
+                                     <option>Executive Main Brain</option>
+                                     <option>Quality Assurance Bot</option>
+                                   </>
+                                 )}
                                </select>
                              </div>
                            )}
@@ -492,35 +632,34 @@ export function AutomationView() {
                        ))}
                      </div>
                    )}
-                 </div>
-      
-                 <div className="border-t border-[var(--border-base)] pt-6 px-6">
-                   <h3 className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-widest mb-4 flex items-center gap-2">
-                     <Copy className="w-3.5 h-3.5 text-blue-400" />
-                     Template Library
-                   </h3>
-                   <div className="space-y-3">
-                     <div className="p-4 bg-[var(--bg-base)] border border-[var(--border-base)] rounded-xl hover:border-blue-500/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.1)] cursor-pointer transition-all group">
-                       <h4 className="text-sm font-bold text-[var(--text-primary)] group-hover:text-blue-400 transition-colors">Customer Support Routing</h4>
-                       <p className="text-xs text-[var(--text-muted)] mt-1.5 leading-relaxed">Automatically triages incoming Zendesk tickets to available agents.</p>
-                     </div>
-                     <div className="p-4 bg-[var(--bg-base)] border border-[var(--border-base)] rounded-xl hover:border-amber-500/50 hover:shadow-[0_0_15px_rgba(245,158,11,0.1)] cursor-pointer transition-all group">
-                       <h4 className="text-sm font-bold text-[var(--text-primary)] group-hover:text-amber-400 transition-colors">Incident Escalation</h4>
-                       <p className="text-xs text-[var(--text-muted)] mt-1.5 leading-relaxed">Multi-step approval flow for P1 system outages.</p>
-                     </div>
-                     <div className="p-4 bg-[var(--bg-base)] border border-[var(--border-base)] rounded-xl hover:border-purple-500/50 hover:shadow-[0_0_15px_rgba(168,85,247,0.1)] cursor-pointer transition-all group">
-                       <h4 className="text-sm font-bold text-[var(--text-primary)] group-hover:text-purple-400 transition-colors">Weekly Report Gen</h4>
-                       <p className="text-xs text-[var(--text-muted)] mt-1.5 leading-relaxed">Aggregates Jira/GitHub metrics via Executive Agent.</p>
-                     </div>
-                   </div>
-                 </div>
+                 </div>                  <div className="border-t border-[var(--border-base)] pt-6 px-6">
+                    <h3 className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Copy className="w-3.5 h-3.5 text-blue-400" />
+                      Template Library
+                    </h3>
+                    <div className="space-y-3">
+                      {TEMPLATES.map(t => (
+                        <div 
+                          key={t.id}
+                          onClick={() => handleLoadTemplate(t.id)}
+                          className={`p-4 bg-[var(--bg-base)] border rounded-xl hover:border-blue-500/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.1)] cursor-pointer transition-all group ${activeTemplateId === t.id ? 'border-blue-500/80 bg-blue-500/5 ring-1 ring-blue-500/20' : 'border-[var(--border-base)]'}`}
+                        >
+                          <h4 className="text-sm font-bold text-[var(--text-primary)] group-hover:text-blue-400 transition-colors flex items-center gap-2">
+                            {t.id === 'youtube-manager' && <Youtube className="w-4 h-4 text-rose-500 shrink-0" />}
+                            <span>{t.title}</span>
+                          </h4>
+                          <p className="text-xs text-[var(--text-muted)] mt-1.5 leading-relaxed">{t.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                </>
             ) : (
               <div className="px-6 space-y-6">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-sm font-bold text-[var(--text-primary)]">Version History</h3>
-                    <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">High-Risk Incident Escalation</p>
+                    <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">{flowTitle}</p>
                   </div>
                   <span className="text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded border border-emerald-500/20 font-bold uppercase tracking-widest shadow-sm">Auto-saved</span>
                 </div>

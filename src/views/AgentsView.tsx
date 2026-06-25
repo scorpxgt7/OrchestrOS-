@@ -155,12 +155,26 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
 
   // Find currently selected agent details
   const selectedAgent = useMemo(() => {
-    return agents.find(a => a.id === selectedAgentId) || agents[0];
+    return agents.find(a => a.id === selectedAgentId) || agents[0] || {
+      id: 0,
+      name: 'Loading Agent...',
+      status: 'Active',
+      type: 'Primary',
+      department: { name: 'Operations' },
+      memoryAccess: [],
+      autonomyLevel: 'Level 1',
+      riskThreshold: 80,
+    };
   }, [selectedAgentId, agents]);
 
   // Read active chart data for selected agent
   const chartData = useMemo(() => {
-    return allChartData[selectedAgentId?.toString()] || [];
+    const idStr = selectedAgentId?.toString();
+    if (!idStr) return [];
+    if (!allChartData[idStr]) {
+      return generateBaseDataForAgent(selectedAgentId);
+    }
+    return allChartData[idStr];
   }, [allChartData, selectedAgentId]);
 
   // Aggregate stats derived from current 24h data
