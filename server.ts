@@ -3,6 +3,21 @@ import path from "path";
 import { requireAuth, AuthRequest } from './src/middleware/auth.ts';
 import { getOrCreateUser } from './src/db/users.ts';
 
+import agentsRouter from './src/api/routes/agents.ts';
+import tasksRouter from './src/api/routes/tasks.ts';
+import workflowsRouter from './src/api/routes/workflows.ts';
+import memoryRouter from './src/api/routes/memory.ts';
+import policiesRouter from './src/api/routes/policies.ts';
+import incidentsRouter from './src/api/routes/incidents.ts';
+import auditRouter from './src/api/routes/audit.ts';
+import departmentsRouter from './src/api/routes/departments.ts';
+import brainRouter from './src/api/routes/brain.ts';
+import seedRouter from './src/api/routes/seed.ts';
+import devRouter from './src/api/routes/dev.ts';
+import dashboardRouter from './src/api/routes/dashboard.ts';
+import organizationsRouter from './src/api/routes/organizations.ts';
+import evaluationsRouter from './src/api/routes/evaluations.ts';
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -28,6 +43,21 @@ async function startServer() {
       res.status(500).json({ error: error.message });
     }
   });
+
+  app.use('/api/agents', agentsRouter);
+  app.use('/api/tasks', tasksRouter);
+  app.use('/api/workflows', workflowsRouter);
+  app.use('/api/memory', memoryRouter);
+  app.use('/api/policies', policiesRouter);
+  app.use('/api/incidents', incidentsRouter);
+  app.use('/api/audit', auditRouter);
+  app.use('/api/departments', departmentsRouter);
+  app.use('/api/brain', brainRouter);
+  app.use('/api/dashboard', dashboardRouter);
+  app.use('/api/organizations', organizationsRouter);
+  app.use('/api/evaluations', evaluationsRouter);
+  app.use('/api/seed', seedRouter);
+  app.use('/api/dev', devRouter);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

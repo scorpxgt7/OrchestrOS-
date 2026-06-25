@@ -1,21 +1,101 @@
-import { mockTasks, mockAgents } from '../data/mock';
-import { TaskStatus } from '../types';
-import { AlertCircle, Clock, ShieldAlert } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { fetchApi } from '../lib/api';
+import { AlertCircle, Clock, ShieldAlert, Sparkles, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
+import { auditService } from '../services/auditService';
 
-const COLUMNS: TaskStatus[] = ['Backlog', 'In Progress', 'Reviewing', 'Awaiting Approval'];
+interface Agent {
+  id: number;
+  name: string;
+}
+
+interface Task {
+  id: number;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string | null;
+  riskLevel: number | null;
+  assignedAgentId: number | null;
+  lastAction?: string;
+}
+
+const COLUMNS = ['Backlog', 'In Progress', 'Reviewing', 'Awaiting Approval'];
 
 export function WorkflowsView() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [newGoal, setNewGoal] = useState('');
+  const [isPlanning, setIsPlanning] = useState(false);
+
+  const loadData = () => {
+    fetchApi('/tasks').then(setTasks);
+    fetchApi('/agents').then(setAgents);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handlePlanGoal = async () => {
+    if (!newGoal.trim()) return;
+    setIsPlanning(true);
+    try {
+      await fetchApi('/brain/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: newGoal })
+      });
+      setNewGoal('');
+      loadData();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsPlanning(false);
+    }
+  };
+
+  const handleExecuteTask = async (taskId: number) => {
+    try {
+      await fetchApi(`/tasks/${taskId}/execute`, {
+        method: 'POST'
+      });
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      alert(`Execution blocked: ${err.reason || err.message}`);
+      loadData();
+    }
+  };
+
   return (
-    <div className="p-8 h-full flex flex-col">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-[var(--text-base)] tracking-tight mb-1">Active Workflows</h2>
-        <p className="text-[var(--text-muted)] text-sm">Kanban view of autonomous tasks, escalations, and human approval queues.</p>
+    <div className="p-8 h-full flex flex-col font-sans pb-24">
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-[var(--text-base)] tracking-tight mb-1">Active Workflows</h2>
+          <p className="text-[var(--text-muted)] text-sm">Kanban view of autonomous tasks, escalations, and human approval queues.</p>
+        </div>
+        <div className="flex gap-2 items-center bg-[var(--bg-surface)] p-2 rounded-lg border border-[var(--border-base)] w-full md:w-auto">
+          <input 
+            type="text"
+            value={newGoal}
+            onChange={e => setNewGoal(e.target.value)}
+            placeholder="Assign a complex goal to the Main Brain..."
+            className="bg-transparent border-none focus:outline-none text-sm px-2 w-full md:w-64"
+          />
+          <button 
+            onClick={handlePlanGoal}
+            disabled={!newGoal.trim() || isPlanning}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white p-2 rounded-md transition-colors"
+          >
+            {isPlanning ? <Sparkles className="w-4 h-4 animate-pulse" /> : <Plus className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-6 overflow-x-auto pb-4 flex-1">
         {COLUMNS.map((status) => {
-          const columnTasks = mockTasks.filter(t => t.status === status);
+          const columnTasks = tasks.filter(t => t.status === status);
           
           return (
             <div key={status} className="w-80 flex flex-col shrink-0">
@@ -28,7 +108,7 @@ export function WorkflowsView() {
               
               <div className="bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl p-3 flex-1 flex flex-col gap-3">
                 {columnTasks.map((task, i) => {
-                  const assignee = mockAgents.find(a => a.id === task.assigneeId);
+                  const assignee = agents.find(a => a.id === task.assignedAgentId);
                   return (
                     <motion.div 
                       initial={{ opacity: 0, y: 10 }}
@@ -44,7 +124,7 @@ export function WorkflowsView() {
                             'bg-[#27272a] text-[var(--text-secondary)]'}`}>
                           {task.priority}
                         </span>
-                        {task.riskLevel > 50 && (
+                        {task.riskLevel !== null && task.riskLevel > 50 && (
                           <ShieldAlert className={`w-4 h-4 ${task.riskLevel > 80 ? 'text-rose-400' : 'text-amber-400'}`} />
                         )}
                       </div>
@@ -65,6 +145,15 @@ export function WorkflowsView() {
                            </div>
                         )}
                       </div>
+
+                      {task.status === 'Backlog' && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleExecuteTask(task.id); }}
+                          className="mt-3 w-full py-1.5 text-xs font-bold rounded bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 transition-colors"
+                        >
+                          Execute Task
+                        </button>
+                      )}
 
                       {task.lastAction && (
                         <div className="mt-3 p-2 bg-rose-500/10 border border-rose-500/20 rounded text-xs text-rose-300 flex items-start gap-2">

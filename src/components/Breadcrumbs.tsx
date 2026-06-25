@@ -3,9 +3,10 @@ import { ChevronRight, Home } from 'lucide-react';
 interface BreadcrumbsProps {
   currentView: string;
   onViewChange: (view: string) => void;
+  onToggleActivityFeed?: () => void;
 }
 
-export function Breadcrumbs({ currentView, onViewChange }: BreadcrumbsProps) {
+export function Breadcrumbs({ currentView, onViewChange, onToggleActivityFeed }: BreadcrumbsProps) {
   const getBreadcrumbs = () => {
     switch (currentView) {
       case 'dashboard':
@@ -70,6 +71,19 @@ export function Breadcrumbs({ currentView, onViewChange }: BreadcrumbsProps) {
             </div>
           );
         })}
+      </div>
+
+      <div className="ml-auto flex items-center">
+        {onToggleActivityFeed && (
+          <button
+            onClick={onToggleActivityFeed}
+            className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-surface)] hover:bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors shadow-sm relative group"
+            title="Global Activity Feed"
+          >
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-[var(--bg-surface)]"></span>
+            <span className="hidden sm:inline">Activity Feed</span>
+          </button>
+        )}
       </div>
     </div>
   );

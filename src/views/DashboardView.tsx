@@ -1,49 +1,47 @@
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchApi } from '../lib/api';
 import { Activity, AlertTriangle, CheckCircle2, ShieldAlert, Cpu, Network, BrainCircuit, ActivitySquare, GripHorizontal } from 'lucide-react';
-import { mockAgents, mockLogs, mockTasks } from '../data/mock';
 import { motion } from 'motion/react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, LineChart, Line
 } from 'recharts';
 
-const throughputData = [
-  { time: '00:00', tasks: 120 },
-  { time: '04:00', tasks: 85 },
-  { time: '08:00', tasks: 340 },
-  { time: '12:00', tasks: 450 },
-  { time: '16:00', tasks: 380 },
-  { time: '20:00', tasks: 210 },
-  { time: '24:00', tasks: 150 },
-];
-
-const riskData = [
-  { time: 'Mon', avgRisk: 12, peakRisk: 45 },
-  { time: 'Tue', avgRisk: 15, peakRisk: 82 },
-  { time: 'Wed', avgRisk: 14, peakRisk: 55 },
-  { time: 'Thu', avgRisk: 18, peakRisk: 90 },
-  { time: 'Fri', avgRisk: 22, peakRisk: 95 },
-  { time: 'Sat', avgRisk: 10, peakRisk: 30 },
-  { time: 'Sun', avgRisk: 8, peakRisk: 25 },
-];
-
-const healthData = [
-  { time: '10:00', cpu: 45, memory: 60 },
-  { time: '10:05', cpu: 52, memory: 62 },
-  { time: '10:10', cpu: 48, memory: 61 },
-  { time: '10:15', cpu: 70, memory: 68 },
-  { time: '10:20', cpu: 65, memory: 69 },
-  { time: '10:25', cpu: 55, memory: 65 },
-  { time: '10:30', cpu: 40, memory: 63 },
-];
-
 export function DashboardView() {
-  const activeAgents = mockAgents.filter(a => a.status === 'Active' || a.status === 'Busy').length;
-  const criticalTasks = mockTasks.filter(t => t.priority === 'Critical' || t.riskLevel > 80).length;
-  const awaitingApproval = mockTasks.filter(t => t.status === 'Awaiting Approval').length;
+  const [agents, setAgents] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [throughputData, setThroughputData] = useState<any[]>([]);
+  const [riskData, setRiskData] = useState<any[]>([]);
+  const [costBurnData, setCostBurnData] = useState<any[]>([]);
+  const [healthData] = useState([
+    { time: '10:00', cpu: 45, memory: 60 },
+    { time: '10:05', cpu: 52, memory: 62 },
+    { time: '10:10', cpu: 48, memory: 61 },
+    { time: '10:15', cpu: 70, memory: 68 },
+    { time: '10:20', cpu: 65, memory: 69 },
+    { time: '10:25', cpu: 55, memory: 65 },
+    { time: '10:30', cpu: 40, memory: 63 },
+  ]);
+  
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
-  const [chartsOrder, setChartsOrder] = useState(['health', 'throughput', 'risk']);
+  useEffect(() => {
+    fetchApi('/agents').then(setAgents);
+    fetchApi('/tasks').then(setTasks);
+    fetchApi('/audit').then(setAuditLogs);
+    fetchApi('/dashboard/metrics').then(data => {
+      setThroughputData(data.throughputData);
+      setRiskData(data.riskData);
+      setCostBurnData(data.costBurnData);
+    });
+  }, []);
+
+  const activeAgents = agents.filter(a => a.status === 'Active' || a.status === 'Busy').length;
+  const criticalTasks = tasks.filter(t => t.priority === 'Critical' || (t.riskLevel !== null && t.riskLevel > 80)).length;
+  const awaitingApproval = tasks.filter(t => t.status === 'Awaiting Approval').length;
+
+  const [chartsOrder, setChartsOrder] = useState(['throughput', 'risk', 'cost']);
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -55,51 +53,11 @@ export function DashboardView() {
 
   const renderChart = (id: string, dragHandleProps: any) => {
     switch (id) {
-      case 'health':
-        return (
-          <>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-[var(--text-base)]">System Health</h3>
-              <div className="flex items-center gap-2">
-                <ActivitySquare className="w-4 h-4 text-emerald-400" />
-                <div {...dragHandleProps} className="cursor-grab text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded hover:bg-[var(--bg-base)]">
-                  <GripHorizontal className="w-4 h-4" />
-                </div>
-              </div>
-            </div>
-            <div className="flex-1 w-full min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={healthData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorMem" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-base)" vertical={false} />
-                  <XAxis dataKey="time" stroke="var(--text-tertiary)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-tertiary)" fontSize={11} tickLine={false} axisLine={false} />
-                  <RechartsTooltip 
-                    contentStyle={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-base)', color: 'var(--text-primary)' }}
-                    itemStyle={{ fontSize: 12 }}
-                    labelStyle={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}
-                  />
-                  <Area type="monotone" dataKey="cpu" name="CPU" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCpu)" />
-                  <Area type="monotone" dataKey="memory" name="Memory" stroke="#10b981" fillOpacity={1} fill="url(#colorMem)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </>
-        );
       case 'throughput':
         return (
           <>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-[var(--text-base)]">Agent Throughput</h3>
+              <h3 className="text-sm font-bold text-[var(--text-base)]">Task Throughput</h3>
               <div className="flex items-center gap-2">
                 <Network className="w-4 h-4 text-blue-400" />
                 <div {...dragHandleProps} className="cursor-grab text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded hover:bg-[var(--bg-base)]">
@@ -151,6 +109,41 @@ export function DashboardView() {
                   <Line type="monotone" dataKey="peakRisk" name="Peak Risk" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: '#f43f5e' }} activeDot={{ r: 5 }} />
                   <Line type="monotone" dataKey="avgRisk" name="Average Risk" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: '#f59e0b' }} />
                 </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        );
+      case 'cost':
+        return (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-[var(--text-base)]">Cost Burn ($)</h3>
+              <div className="flex items-center gap-2">
+                <ActivitySquare className="w-4 h-4 text-emerald-400" />
+                <div {...dragHandleProps} className="cursor-grab text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded hover:bg-[var(--bg-base)]">
+                  <GripHorizontal className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 w-full min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={costBurnData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-base)" vertical={false} />
+                  <XAxis dataKey="time" stroke="var(--text-tertiary)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--text-tertiary)" fontSize={11} tickLine={false} axisLine={false} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-base)', color: 'var(--text-primary)' }}
+                    itemStyle={{ fontSize: 12 }}
+                    labelStyle={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}
+                  />
+                  <Area type="monotone" dataKey="cost" name="Cost" stroke="#10b981" fillOpacity={1} fill="url(#colorCost)" />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </>
@@ -209,7 +202,7 @@ export function DashboardView() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
           { label: 'System Health', value: '98.4%', icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-          { label: 'Active Agents', value: `${activeAgents} / ${mockAgents.length}`, icon: Cpu, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+          { label: 'Active Agents', value: `${activeAgents} / ${agents.length}`, icon: Cpu, color: 'text-blue-400', bg: 'bg-blue-400/10' },
           { label: 'Pending Approvals', value: awaitingApproval.toString(), icon: Network, color: 'text-amber-400', bg: 'bg-amber-400/10' },
           { label: 'Critical Risks', value: criticalTasks.toString(), icon: ShieldAlert, color: 'text-rose-400', bg: 'bg-rose-400/10' },
         ].map((stat, i) => (
@@ -238,10 +231,10 @@ export function DashboardView() {
           Active High-Priority Agents
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {mockAgents.slice(0, 5).map((agent, i) => {
-            const currentTask = mockTasks.find(t => t.assigneeId === agent.id) || { title: 'Idle / Awaiting Task' };
-            const cpu = ((agent.id.charCodeAt(1) * 17) % 60) + 20; 
-            const memory = ((agent.id.charCodeAt(1) * 23) % 40) + 40;
+          {agents.slice(0, 5).map((agent, i) => {
+            const currentTask = tasks.find(t => t.assignedAgentId === agent.id) || { title: 'Idle / Awaiting Task' };
+            const cpu = ((agent.id.toString().charCodeAt(0) * 17) % 60) + 20; 
+            const memory = ((agent.id.toString().charCodeAt(0) * 23) % 40) + 40;
 
             return (
               <motion.div 
@@ -335,31 +328,31 @@ export function DashboardView() {
             <h3 className="text-lg font-semibold text-[var(--text-base)]">Overwatch Live Feed</h3>
           </div>
           <div className="flex-1 overflow-y-auto pr-4 space-y-4">
-            {mockLogs.map((log, i) => (
+            {auditLogs.slice(0, 50).map((log: any, i: number) => (
               <motion.div 
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: i * 0.05 }}
                 key={log.id} 
                 className="flex gap-4 p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-base)]"
               >
                 <div className="mt-0.5">
-                  {log.type === 'Warning' ? <AlertTriangle className="w-5 h-5 text-amber-400" /> :
-                   log.type === 'Error' ? <ShieldAlert className="w-5 h-5 text-rose-400" /> :
-                   log.type === 'Approval' ? <Network className="w-5 h-5 text-blue-400" /> :
-                   <CheckCircle2 className="w-5 h-5 text-[var(--text-muted)]" />}
+                  {log.riskScore > 80 ? <ShieldAlert className="w-5 h-5 text-rose-400" /> :
+                   log.riskScore > 50 ? <AlertTriangle className="w-5 h-5 text-amber-400" /> :
+                   log.action?.toLowerCase().includes('approval') ? <Network className="w-5 h-5 text-blue-400" /> :
+                   <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-[var(--text-primary)]">{mockAgents.find(a => a.id === log.sourceId)?.name || 'System'}</span>
+                    <span className="text-sm font-medium text-[var(--text-primary)]">{agents.find(a => a.id === log.actorAgentId)?.name || 'System / Owner'}</span>
                     <span className="text-xs text-[var(--text-tertiary)] font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                    {log.riskScore && (
+                    {log.riskScore > 0 && (
                       <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider ${log.riskScore > 80 ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>
                         Risk: {log.riskScore}
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-[var(--text-muted)]">{log.message}</p>
+                  <p className="text-sm text-[var(--text-muted)]">{log.action}: {log.metadata?.message || log.metadata?.departmentName || JSON.stringify(log.metadata)}</p>
                 </div>
               </motion.div>
             ))}

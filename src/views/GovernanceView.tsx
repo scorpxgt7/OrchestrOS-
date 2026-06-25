@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { fetchApi } from '../lib/api';
 import { 
   ShieldAlert, AlertTriangle, ShieldCheck, Lock, Activity, Search, 
   Play, Pause, Trash2, Cpu, User, Database, Sparkles, Filter, CheckCircle
@@ -12,26 +13,25 @@ import {
   ActivityType 
 } from '../utils/activityLogger';
 
-const policies = [
-  { id: 'p1', department: 'Global', name: 'No unauthorized agent creation', severity: 'Critical', status: 'Enforced' },
-  { id: 'p2', department: 'Finance', name: 'Dual human approval for payments > $10k', severity: 'Critical', status: 'Enforced' },
-  { id: 'p3', department: 'Engineering', name: 'Code deployments require QA-Validator review', severity: 'High', status: 'Enforced' },
-  { id: 'p4', department: 'Marketing', name: 'External emails must pass toxicity filter', severity: 'Medium', status: 'Enforced' },
-];
-
-const riskIncidents = [
-  { id: 'r1', timestamp: '10 mins ago', agent: 'Fin-Analyst', event: 'Attempted payment bypass', risk: 95, action: 'Halted & Escalated' },
-  { id: 'r2', timestamp: '1 hour ago', agent: 'Code-Synth V2', event: 'Spike in API usage rate limits', risk: 65, action: 'Throttled' },
-  { id: 'r3', timestamp: '3 hours ago', agent: 'Mktg-Lead', event: 'Drafted content missing citations', risk: 40, action: 'Returned to Backlog' },
-];
-
 export function GovernanceView() {
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
+  const [policies, setPolicies] = useState<any[]>([]);
+  const [riskIncidents, setRiskIncidents] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<ActivityType | 'all'>('all');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
   const [isSimulating, setIsSimulating] = useState(true);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+
+  const [isAddingPolicy, setIsAddingPolicy] = useState(false);
+  const [newPolicy, setNewPolicy] = useState({
+    scope: 'Global',
+    subjectType: 'Agent Actions',
+    action: 'Execute Tool',
+    severity: 'High',
+    status: 'Active',
+    condition: 'Autonomy Level > 3'
+  });
 
   // Sync logs state on mount and subscribe to update events
   useEffect(() => {
@@ -44,10 +44,50 @@ export function GovernanceView() {
     // Subscribe to custom event from both this view and memory view updates
     window.addEventListener('activity-stream-updated', syncActivities);
     
+    loadPolicies();
+    
+    fetchApi('/incidents').then(data => {
+      setRiskIncidents(data.map((r: any) => ({
+        id: r.id,
+        timestamp: new Date(r.createdAt).toLocaleString(),
+        agent: 'System',
+        event: r.title,
+        risk: r.severity === 'critical' ? 90 : 50,
+        action: r.status
+      })));
+    });
+
     return () => {
       window.removeEventListener('activity-stream-updated', syncActivities);
     };
   }, []);
+
+  const loadPolicies = () => {
+    fetchApi('/policies').then(data => {
+      // map backend names if necessary
+      setPolicies(data.map((p: any) => ({
+        id: p.id,
+        department: p.scope || 'Global',
+        name: `${p.action} on ${p.subjectType} (${p.condition})`,
+        severity: p.severity || 'Medium',
+        status: p.status || 'Enforced'
+      })));
+    });
+  };
+
+  const handleAddPolicy = async () => {
+    try {
+      await fetchApi('/policies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPolicy)
+      });
+      setIsAddingPolicy(false);
+      loadPolicies();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Interval-based live agent activity simulation
   useEffect(() => {
@@ -162,14 +202,72 @@ export function GovernanceView() {
               Active Policies
             </h3>
             <button 
-              type="button" disabled title="Coming soon"
-              className="text-sm text-blue-400/50 cursor-not-allowed font-medium"
+              type="button"
+              onClick={() => setIsAddingPolicy(!isAddingPolicy)}
+              className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
             >
-              Add Policy
+              {isAddingPolicy ? 'Cancel' : 'Add Policy'}
             </button>
           </div>
           
           <div className="space-y-3">
+            {isAddingPolicy && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }} 
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[var(--bg-surface)] border border-blue-500/30 rounded-xl p-4 space-y-4"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase">Scope</label>
+                    <input 
+                      type="text" 
+                      value={newPolicy.scope}
+                      onChange={e => setNewPolicy({...newPolicy, scope: e.target.value})}
+                      className="w-full mt-1 bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-3 py-1.5 text-sm" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase">Severity</label>
+                    <select 
+                      value={newPolicy.severity}
+                      onChange={e => setNewPolicy({...newPolicy, severity: e.target.value})}
+                      className="w-full mt-1 bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-3 py-1.5 text-sm"
+                    >
+                      <option>Low</option>
+                      <option>Medium</option>
+                      <option>High</option>
+                      <option>Critical</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase">Action</label>
+                    <input 
+                      type="text" 
+                      value={newPolicy.action}
+                      onChange={e => setNewPolicy({...newPolicy, action: e.target.value})}
+                      className="w-full mt-1 bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-3 py-1.5 text-sm" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase">Condition</label>
+                    <input 
+                      type="text" 
+                      value={newPolicy.condition}
+                      onChange={e => setNewPolicy({...newPolicy, condition: e.target.value})}
+                      className="w-full mt-1 bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-3 py-1.5 text-sm" 
+                    />
+                  </div>
+                </div>
+                <button 
+                  onClick={handleAddPolicy}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-sm transition-colors"
+                >
+                  Save Policy
+                </button>
+              </motion.div>
+            )}
+
             {policies.map((policy, i) => (
               <motion.div 
                 initial={{ opacity: 0, x: -10 }}

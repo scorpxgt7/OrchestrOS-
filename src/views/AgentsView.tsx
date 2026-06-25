@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { mockAgents } from '../data/mock';
+import { fetchApi } from '../lib/api';
+import { auditService } from '../services/auditService';
 import { 
   Shield, Brain, Network, Zap, Settings, Activity, Gauge, 
   Database, RefreshCw, Sparkles, AlertTriangle, Check, ArrowRight,
@@ -17,6 +18,18 @@ import {
   Legend
 } from 'recharts';
 
+interface Agent {
+  id: number;
+  name: string;
+  role: string;
+  mission: string | null;
+  autonomyLevel: number;
+  status: string;
+  department?: { name: string };
+  skills: string[];
+  responsibilities: string[];
+}
+
 interface DataPoint {
   time: string;
   memory: number; // MB
@@ -24,7 +37,7 @@ interface DataPoint {
 }
 
 // Generate the 24h cyclic baseline data for a given agent
-function generateBaseDataForAgent(agentId: string): DataPoint[] {
+function generateBaseDataForAgent(agentId: number | string): DataPoint[] {
   const currentHour = new Date().getHours();
   const data: DataPoint[] = [];
 
@@ -34,55 +47,59 @@ function generateBaseDataForAgent(agentId: string): DataPoint[] {
   let baseLat = 120; // in ms
   let latFluct = 15;
 
-  switch (agentId) {
-    case 'a1': // Alpha Prime (Main Brain)
-      baseMem = 1250;
-      memFluct = 110;
-      baseLat = 95;
-      latFluct = 12;
-      break;
-    case 'a2': // Aegis Monitor (Overwatch)
-      baseMem = 420;
-      memFluct = 20;
-      baseLat = 55;
-      latFluct = 6;
-      break;
-    case 'a3': // Exec-Ops 1 (Executive Director)
-      baseMem = 310;
-      memFluct = 15;
-      baseLat = 145;
-      latFluct = 18;
-      break;
-    case 'a4': // Mktg-Lead
-      baseMem = 480;
-      memFluct = 45;
-      baseLat = 210;
-      latFluct = 25;
-      break;
-    case 'a5': // Code-Synth V2
-      baseMem = 840;
-      memFluct = 95;
-      baseLat = 360;
-      latFluct = 55;
-      break;
-    case 'a6': // Docu-Scribe (Memory Agent)
-      baseMem = 512;
-      memFluct = 35;
-      baseLat = 75;
-      latFluct = 10;
-      break;
-    case 'a7': // QA-Validator
-      baseMem = 256;
-      memFluct = 18;
-      baseLat = 290;
-      latFluct = 35;
-      break;
-    case 'a8': // Fin-Analyst
-      baseMem = 156;
-      memFluct = 5;
-      baseLat = 0;
-      latFluct = 0;
-      break;
+  if (typeof agentId === 'number') {
+    baseMem = 400 + agentId * 10;
+  } else {
+    switch (agentId) {
+      case 'a1': // Alpha Prime (Main Brain)
+        baseMem = 1250;
+        memFluct = 110;
+        baseLat = 95;
+        latFluct = 12;
+        break;
+      case 'a2': // Aegis Monitor (Overwatch)
+        baseMem = 420;
+        memFluct = 20;
+        baseLat = 55;
+        latFluct = 6;
+        break;
+      case 'a3': // Exec-Ops 1 (Executive Director)
+        baseMem = 310;
+        memFluct = 15;
+        baseLat = 145;
+        latFluct = 18;
+        break;
+      case 'a4': // Mktg-Lead
+        baseMem = 480;
+        memFluct = 45;
+        baseLat = 210;
+        latFluct = 25;
+        break;
+      case 'a5': // Code-Synth V2
+        baseMem = 840;
+        memFluct = 95;
+        baseLat = 360;
+        latFluct = 55;
+        break;
+      case 'a6': // Docu-Scribe (Memory Agent)
+        baseMem = 512;
+        memFluct = 35;
+        baseLat = 75;
+        latFluct = 10;
+        break;
+      case 'a7': // QA-Validator
+        baseMem = 256;
+        memFluct = 18;
+        baseLat = 290;
+        latFluct = 35;
+        break;
+      case 'a8': // Fin-Analyst
+        baseMem = 156;
+        memFluct = 5;
+        baseLat = 0;
+        latFluct = 0;
+        break;
+    }
   }
 
   for (let i = 23; i >= 0; i--) {
@@ -111,7 +128,8 @@ function generateBaseDataForAgent(agentId: string): DataPoint[] {
 }
 
 export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => void }) {
-  const [selectedAgentId, setSelectedAgentId] = useState<string>(mockAgents[0].id);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<number | string>('');
   const [allChartData, setAllChartData] = useState<Record<string, DataPoint[]>>({});
   
   // Interactive action animations/states
@@ -122,21 +140,27 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
 
   // Initialize all agents chart data on mount
   useEffect(() => {
-    const initialData: Record<string, DataPoint[]> = {};
-    mockAgents.forEach(agent => {
-      initialData[agent.id] = generateBaseDataForAgent(agent.id);
+    fetchApi('/agents').then((data: Agent[]) => {
+      setAgents(data);
+      if (data.length > 0) {
+        setSelectedAgentId(data[0].id);
+      }
+      const initialData: Record<string, DataPoint[]> = {};
+      data.forEach(agent => {
+        initialData[agent.id.toString()] = generateBaseDataForAgent(agent.id);
+      });
+      setAllChartData(initialData);
     });
-    setAllChartData(initialData);
   }, []);
 
   // Find currently selected agent details
   const selectedAgent = useMemo(() => {
-    return mockAgents.find(a => a.id === selectedAgentId) || mockAgents[0];
-  }, [selectedAgentId]);
+    return agents.find(a => a.id === selectedAgentId) || agents[0];
+  }, [selectedAgentId, agents]);
 
   // Read active chart data for selected agent
   const chartData = useMemo(() => {
-    return allChartData[selectedAgentId] || [];
+    return allChartData[selectedAgentId?.toString()] || [];
   }, [allChartData, selectedAgentId]);
 
   // Aggregate stats derived from current 24h data
@@ -152,7 +176,7 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
   }, [chartData]);
 
   const efficiencyIndex = useMemo(() => {
-    if (selectedAgent.status === 'Halted') return '0.0%';
+    if (!selectedAgent || selectedAgent.status === 'Halted') return '0.0%';
     if (!chartData.length) return '95.0%';
     const avgLat = chartData.reduce((acc, d) => acc + d.latency, 0) / chartData.length;
     const rawScore = 100 - (avgLat * 0.04) - (avgMemory * 0.005);
@@ -183,10 +207,10 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
 
   // Sparklines helper
   const sparklineData = useMemo(() => 
-    mockAgents.map(() => 
+    agents.map(() => 
       Array.from({ length: 16 }, () => Math.floor(Math.random() * 60) + 20)
     )
-  , []);
+  , [agents]);
 
   // Action: Garbage Collection
   const triggerGarbageCollection = () => {
@@ -221,6 +245,12 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
       setGcActive(false);
       const savedMem = Math.round(avgMemory * 0.35);
       showToast(`Garbage Collection completed. Reclaimed ${savedMem}MB memory heap!`);
+      auditService.logEvent({
+        action: 'Garbage Collection Triggered',
+        actorAgentId: selectedAgent.id,
+        metadata: { savedMem, agentName: selectedAgent.name },
+        outcome: 'success'
+      });
     }, 1500);
   };
 
@@ -255,6 +285,12 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
 
       setTuningActive(false);
       showToast(`Cognitive tuning completed. Reduced peak latency by ${Math.round(peakLatency * 0.3)}ms.`);
+      auditService.logEvent({
+        action: 'Latency Tuning Triggered',
+        actorAgentId: selectedAgent.id,
+        metadata: { latencyReduced: Math.round(peakLatency * 0.3), agentName: selectedAgent.name },
+        outcome: 'success'
+      });
     }, 1500);
   };
 
@@ -289,6 +325,12 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
 
       setStressActive(false);
       showToast(`Stress test completed. Core verified safe up to 150k context tokens.`);
+      auditService.logEvent({
+        action: 'Stress Test Triggered',
+        actorAgentId: selectedAgent.id,
+        metadata: { agentName: selectedAgent.name },
+        outcome: 'success'
+      });
     }, 2000);
   };
 
@@ -298,6 +340,15 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
       setToastMessage(prev => prev === msg ? null : prev);
     }, 4000);
   };
+
+  if (!selectedAgent) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto flex items-center justify-center h-[50vh] text-[var(--text-tertiary)] gap-3 font-sans">
+        <Server className="w-5 h-5 animate-spin" />
+        <p className="text-sm font-medium">Booting Agent Telemetry Interface...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 pb-32 font-sans">
@@ -564,16 +615,15 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
             <Server className="w-5 h-5 text-blue-400" />
-            Active Agent Directory ({mockAgents.length})
+            Active Agent Directory ({agents.length})
           </h3>
           <span className="text-xs text-[var(--text-muted)] font-mono">Select any agent to inspect telemetry</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {mockAgents.map((agent, i) => {
+          {agents.map((agent, i) => {
             const isSelected = agent.id === selectedAgentId;
-            const levelMatch = agent.autonomyLevel.match(/\d/);
-            const levelNum = levelMatch ? parseInt(levelMatch[0], 10) : 1;
+            const levelNum = agent.autonomyLevel;
             
             return (
               <motion.div 

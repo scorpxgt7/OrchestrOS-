@@ -1,5 +1,6 @@
 import { Sliders, Cpu, Activity, Server, RadioReceiver, Palette } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchApi } from '../lib/api';
 
 interface SettingsViewProps {
   theme?: string;
@@ -8,6 +9,42 @@ interface SettingsViewProps {
 
 export function SettingsView({ theme = 'theme-default', setTheme }: SettingsViewProps) {
   const [riskThreshold, setRiskThreshold] = useState(75);
+  const [primaryModel, setPrimaryModel] = useState('Gemini 1.5 Pro');
+  const [costPreference, setCostPreference] = useState('Balanced');
+  const [dualApproval, setDualApproval] = useState(false);
+  const [autoRemediate, setAutoRemediate] = useState(true);
+
+  useEffect(() => {
+    fetchApi('/organizations/current').then((org: any) => {
+      if (org?.settings) {
+        if (org.settings.riskThreshold !== undefined) setRiskThreshold(org.settings.riskThreshold);
+        if (org.settings.primaryModel) setPrimaryModel(org.settings.primaryModel);
+        if (org.settings.costPreference) setCostPreference(org.settings.costPreference);
+        if (org.settings.dualApproval !== undefined) setDualApproval(org.settings.dualApproval);
+        if (org.settings.autoRemediate !== undefined) setAutoRemediate(org.settings.autoRemediate);
+        if (org.settings.theme && setTheme) setTheme(org.settings.theme);
+      }
+    });
+  }, []);
+
+  const updateSetting = async (key: string, value: any) => {
+    try {
+      const org = await fetchApi('/organizations/current');
+      const newSettings = { ...org.settings, [key]: value };
+      await fetchApi('/organizations/current', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: newSettings })
+      });
+    } catch (e) {
+      console.error('Failed to update setting', e);
+    }
+  };
+
+  const handleSetTheme = (newTheme: string) => {
+    if (setTheme) setTheme(newTheme);
+    updateSetting('theme', newTheme);
+  };
 
   const themeOptions = [
     { id: 'theme-default', label: 'Default Dark' },
@@ -37,7 +74,14 @@ export function SettingsView({ theme = 'theme-default', setTheme }: SettingsView
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider block mb-2">Primary Global Router Model</label>
-                <select className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none">
+                <select 
+                  value={primaryModel}
+                  onChange={(e) => {
+                    setPrimaryModel(e.target.value);
+                    updateSetting('primaryModel', e.target.value);
+                  }}
+                  className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none"
+                >
                   <option>Gemini 1.5 Pro</option>
                   <option>Gemini 1.5 Flash</option>
                   <option>Local Network LLM</option>
@@ -47,9 +91,18 @@ export function SettingsView({ theme = 'theme-default', setTheme }: SettingsView
               <div>
                 <label className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider block mb-2">Cost Optimization Preference</label>
                 <div className="bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg p-1 flex gap-1">
-                  <button className="flex-1 py-1.5 rounded bg-[#27272a] px-3 text-xs text-[var(--text-primary)] font-medium">Aggressive (Local First)</button>
-                  <button className="flex-1 py-1.5 rounded px-3 text-xs text-[var(--text-tertiary)] font-medium hover:bg-[#27272a]/50 border border-transparent">Balanced</button>
-                  <button className="flex-1 py-1.5 rounded px-3 text-xs text-[var(--text-tertiary)] font-medium hover:bg-[#27272a]/50 border border-transparent">Quality First (Remote)</button>
+                  {['Aggressive (Local First)', 'Balanced', 'Quality First (Remote)'].map(pref => (
+                    <button 
+                      key={pref}
+                      onClick={() => {
+                        setCostPreference(pref);
+                        updateSetting('costPreference', pref);
+                      }}
+                      className={`flex-1 py-1.5 rounded px-3 text-xs font-medium border ${costPreference === pref ? 'bg-[#27272a] text-[var(--text-primary)] border-transparent' : 'text-[var(--text-tertiary)] hover:bg-[#27272a]/50 border-transparent'}`}
+                    >
+                      {pref}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -74,7 +127,7 @@ export function SettingsView({ theme = 'theme-default', setTheme }: SettingsView
                     name="theme" 
                     value={opt.id} 
                     checked={theme === opt.id}
-                    onChange={() => setTheme?.(opt.id)}
+                    onChange={() => handleSetTheme(opt.id)}
                     className="w-4 h-4 text-blue-500 focus:ring-blue-500 border-[var(--border-base)] bg-[var(--bg-base)]"
                   />
                   <span className={`text-sm font-medium ${theme === opt.id ? 'text-blue-400' : 'text-[var(--text-secondary)]'}`}>
@@ -107,7 +160,10 @@ export function SettingsView({ theme = 'theme-default', setTheme }: SettingsView
                   type="range" 
                   min="0" max="100" 
                   value={riskThreshold}
-                  onChange={(e) => setRiskThreshold(Number(e.target.value))}
+                  onChange={(e) => {
+                    setRiskThreshold(Number(e.target.value));
+                    updateSetting('riskThreshold', Number(e.target.value));
+                  }}
                   className="w-full accent-rose-500 bg-[#27272a] h-2 rounded-lg appearance-none cursor-pointer"
                 />
                 <div className="flex justify-between mt-1 text-[10px] text-[var(--text-tertiary)]">
@@ -117,18 +173,30 @@ export function SettingsView({ theme = 'theme-default', setTheme }: SettingsView
               </div>
 
               <div className="space-y-3">
-                 <label className="flex items-center gap-3 w-full bg-[var(--bg-base)] border border-[var(--border-base)] px-4 py-3 rounded-lg justify-between">
+                 <button 
+                   onClick={() => {
+                     setDualApproval(!dualApproval);
+                     updateSetting('dualApproval', !dualApproval);
+                   }}
+                   className="flex items-center gap-3 w-full bg-[var(--bg-base)] border border-[var(--border-base)] px-4 py-3 rounded-lg justify-between"
+                 >
                    <span className="text-sm text-[var(--text-secondary)]">Enforce Dual-Approval on Financials</span>
-                   <div className="w-8 h-4 bg-blue-500 rounded-full relative">
-                     <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-[#fafafa] rounded-full"></div>
+                   <div className={`w-8 h-4 rounded-full relative transition-colors ${dualApproval ? 'bg-blue-500' : 'bg-[var(--border-base)]'}`}>
+                     <div className={`absolute top-0.5 w-3 h-3 bg-[#fafafa] rounded-full transition-all ${dualApproval ? 'right-0.5' : 'left-0.5'}`}></div>
                    </div>
-                 </label>
-                 <label className="flex items-center gap-3 w-full bg-[var(--bg-base)] border border-[var(--border-base)] px-4 py-3 rounded-lg justify-between">
+                 </button>
+                 <button 
+                   onClick={() => {
+                     setAutoRemediate(!autoRemediate);
+                     updateSetting('autoRemediate', !autoRemediate);
+                   }}
+                   className="flex items-center gap-3 w-full bg-[var(--bg-base)] border border-[var(--border-base)] px-4 py-3 rounded-lg justify-between"
+                 >
                    <span className="text-sm text-[var(--text-secondary)]">Auto-Remediate Low Risk Anomalies</span>
-                   <div className="w-8 h-4 bg-blue-500 rounded-full relative">
-                     <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-[#fafafa] rounded-full"></div>
+                   <div className={`w-8 h-4 rounded-full relative transition-colors ${autoRemediate ? 'bg-blue-500' : 'bg-[var(--border-base)]'}`}>
+                     <div className={`absolute top-0.5 w-3 h-3 bg-[#fafafa] rounded-full transition-all ${autoRemediate ? 'right-0.5' : 'left-0.5'}`}></div>
                    </div>
-                 </label>
+                 </button>
               </div>
             </div>
           </div>

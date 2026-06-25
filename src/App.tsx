@@ -6,19 +6,42 @@ import { AgentsView } from './views/AgentsView';
 import { WorkflowsView } from './views/WorkflowsView';
 import { ArchitectureView } from './views/ArchitectureView';
 import { GovernanceView } from './views/GovernanceView';
+import { OrganizationBuilderView } from './views/OrganizationBuilderView';
 import { AgentBuilderView } from './views/AgentBuilderView';
 import { MemoryView } from './views/MemoryView';
 import { ApprovalQueueView } from './views/ApprovalQueueView';
 import { AutomationView } from './views/AutomationView';
+import { IntegrationsView } from './views/IntegrationsView';
 import { SettingsView } from './views/SettingsView';
 import { EvaluationsView } from './views/EvaluationsView';
 import { ResourceUsageMonitor } from './components/ResourceUsageMonitor';
+import { GlobalActivityFeed } from './components/GlobalActivityFeed';
 import { motion, AnimatePresence } from 'motion/react';
+import { fetchApi } from './lib/api';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [theme, setTheme] = useState('theme-default');
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
+  const [isAppReady, setIsAppReady] = useState(false);
+
+  useEffect(() => {
+    // Development initialization: creates default user, organization, and seeds data
+    const initApp = async () => {
+      try {
+        const initRes = await fetch('/api/dev/init', { method: 'POST' });
+        console.log('init status:', initRes.status);
+        const seedRes = await fetchApi('/seed', { method: 'POST' });
+        console.log('seed res:', seedRes);
+      } catch (err) {
+        console.error('App init/seed error:', err);
+      } finally {
+        setIsAppReady(true);
+      }
+    };
+    initApp();
+  }, []);
 
   const handleViewChange = (view: string) => {
     if (view === currentView) return;
@@ -34,10 +57,22 @@ export default function App() {
   }, [currentView, isNavigating]);
 
   const renderView = () => {
+    if (!isAppReady) {
+      return (
+        <div className="p-8 flex items-center justify-center h-full text-[var(--text-tertiary)]">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2 text-[var(--text-primary)]">Initializing OrchestrOS...</h2>
+            <p className="text-sm">Connecting to Main Brain and verifying governance policies.</p>
+          </div>
+        </div>
+      );
+    }
+
     switch (currentView) {
       case 'dashboard':
         return <DashboardView />;
       case 'org':
+        return <OrganizationBuilderView />;
       case 'agents':
         return <AgentsView onViewChange={handleViewChange} />;
       case 'agent-builder':
@@ -52,6 +87,8 @@ export default function App() {
         return <ApprovalQueueView />;
       case 'automations':
         return <AutomationView />;
+      case 'integrations':
+        return <IntegrationsView />;
       case 'evaluations':
         return <EvaluationsView />;
       case 'settings':
@@ -76,7 +113,11 @@ export default function App() {
       <main className="flex-1 overflow-y-auto bg-[var(--bg-base)] border-l border-[var(--border-base)] shadow-2xl relative flex flex-col">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-[var(--bg-base)] to-[var(--bg-base)] pointer-events-none" />
         <div className="relative z-10 flex flex-col min-h-full">
-          <Breadcrumbs currentView={currentView} onViewChange={handleViewChange} />
+          <Breadcrumbs 
+            currentView={currentView} 
+            onViewChange={handleViewChange} 
+            onToggleActivityFeed={() => setIsActivityFeedOpen(true)}
+          />
           <div className="flex-1 relative">
             <AnimatePresence mode="wait">
               {isNavigating ? (
@@ -127,6 +168,7 @@ export default function App() {
           <ResourceUsageMonitor />
         </div>
       </main>
+      <GlobalActivityFeed isOpen={isActivityFeedOpen} onClose={() => setIsActivityFeedOpen(false)} />
     </div>
   );
 }

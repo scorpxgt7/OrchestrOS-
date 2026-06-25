@@ -19,13 +19,15 @@ interface SidebarProps {
 export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   const navItems = [
     { id: 'dashboard', label: 'Command Center', icon: LayoutDashboard },
-    { id: 'org', label: 'Agent Hierarchy', icon: Users },
+    { id: 'org', label: 'Organization Builder', icon: Users },
+    { id: 'agents', label: 'Agent Hierarchy', icon: BrainCircuit },
     { id: 'evaluations', label: 'Agent Performance', icon: Activity },
     { id: 'workflows', label: 'Workflows', icon: KanbanSquare },
     { id: 'governance', label: 'Governance & Risk', icon: ShieldAlert },
     { id: 'approvals', label: 'Approval Queue', icon: CheckCircle },
     { id: 'memory', label: 'Memory Center', icon: Database },
     { id: 'automations', label: 'Automations', icon: Workflow },
+    { id: 'integrations', label: 'Integrations', icon: Settings },
     { id: 'architecture', label: 'System Architecture', icon: BrainCircuit },
   ];
 
@@ -44,7 +46,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
       <nav className="flex-1 px-4 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = currentView === item.id || (currentView === 'agents' && item.id === 'org');
+          const isActive = currentView === item.id || (currentView === 'agent-builder' && item.id === 'agents');
           return (
             <button
               key={item.id}

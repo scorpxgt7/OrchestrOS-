@@ -1,15 +1,66 @@
-import { mockTasks, mockAgents } from '../data/mock';
 import { AlertTriangle, Check, X, Edit3, ShieldAlert, Clock, Inbox, Sparkles, Filter, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchApi } from '../lib/api';
+import { auditService } from '../services/auditService';
+
+interface Task {
+  id: number;
+  title: string;
+  description: string;
+  status: string;
+  department: string;
+  riskLevel: number;
+  assignedAgentId: number;
+  lastAction: string;
+}
+
+interface Agent {
+  id: number;
+  name: string;
+}
 
 export function ApprovalQueueView() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [filterDept, setFilterDept] = useState<string>('all');
+
+  const loadData = () => {
+    fetchApi('/tasks').then(setTasks);
+    fetchApi('/agents').then(setAgents);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
   
-  const allHaltedTasks = mockTasks.filter(t => t.status === 'Awaiting Approval' || t.status === 'Blocked');
+  const allHaltedTasks = tasks.filter(t => t.status === 'Awaiting Approval' || t.status === 'Blocked');
   const haltedTasks = filterDept === 'all' 
     ? allHaltedTasks 
     : allHaltedTasks.filter(t => t.department === filterDept);
+
+  const handleAction = async (taskId: number, action: 'approve' | 'deny', agentId: number) => {
+    try {
+      const status = action === 'approve' ? 'In Progress' : 'Backlog';
+      await fetchApi(`/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      
+      await auditService.logEvent({
+        action: `Task ${action === 'approve' ? 'Approved' : 'Denied'}`,
+        taskId,
+        actorAgentId: agentId,
+        metadata: { status },
+        outcome: 'success'
+      });
+      
+      loadData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8 font-sans pb-24">
@@ -102,7 +153,7 @@ export function ApprovalQueueView() {
           ) : (
             <motion.div key="list" className="space-y-6">
               {haltedTasks.map((task, i) => {
-                const assignee = mockAgents.find(a => a.id === task.assigneeId);
+                const assignee = agents.find(a => a.id === task.assignedAgentId);
                 const isBlocked = task.status === 'Blocked';
 
                 return (
@@ -146,15 +197,17 @@ export function ApprovalQueueView() {
 
                       <div className="flex gap-3 pt-2">
                         <button 
-                          type="button" disabled title="Coming soon"
-                          className="flex-1 bg-emerald-600/5 cursor-not-allowed text-emerald-400/50 border border-emerald-500/10 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                          type="button" 
+                          onClick={() => handleAction(task.id, 'approve', task.assignedAgentId)}
+                          className="flex-1 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                         >
                           <Check className="w-4 h-4" />
                           Approve & Execute
                         </button>
                         <button 
-                          type="button" disabled title="Coming soon"
-                          className="flex-1 bg-rose-600/5 cursor-not-allowed text-rose-400/50 border border-rose-500/10 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                          type="button" 
+                          onClick={() => handleAction(task.id, 'deny', task.assignedAgentId)}
+                          className="flex-1 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/20 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                         >
                           <X className="w-4 h-4" />
                           Deny & Halt

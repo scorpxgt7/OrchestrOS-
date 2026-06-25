@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { mockAgents } from '../data/mock';
+import { useState, useEffect } from 'react';
+import { fetchApi } from '../lib/api';
 import { motion } from 'motion/react';
 import { 
   TrendingUp, 
@@ -32,23 +32,31 @@ interface AgentPerformance {
   }[];
 }
 
-// Generate mock performance data for the agents
-const mockPerformances: Record<string, AgentPerformance> = {
-  'a1': { agentId: 'a1', completionRate: 99.5, accuracyScore: 98, costEfficiency: 92, policyAdherence: 100, overallScore: 97.4, trend: 'Stable', recentFeedback: [{ source: 'Human', date: new Date().toISOString(), message: 'Excellent strategic planning outputs.', type: 'Positive' }] },
-  'a2': { agentId: 'a2', completionRate: 100, accuracyScore: 99.9, costEfficiency: 95, policyAdherence: 100, overallScore: 98.7, trend: 'Up', recentFeedback: [{ source: 'Main Brain', date: new Date().toISOString(), message: 'High accuracy in threat detection.', type: 'Positive' }] },
-  'a3': { agentId: 'a3', completionRate: 85, accuracyScore: 90, costEfficiency: 70, policyAdherence: 95, overallScore: 85.0, trend: 'Stable', recentFeedback: [{ source: 'Overwatch', date: new Date().toISOString(), message: 'Resource usage higher than baseline.', type: 'Warning' }] },
-  'a4': { agentId: 'a4', completionRate: 92, accuracyScore: 88, costEfficiency: 82, policyAdherence: 94, overallScore: 89.0, trend: 'Up', recentFeedback: [] },
-  'a5': { agentId: 'a5', completionRate: 78, accuracyScore: 82, costEfficiency: 60, policyAdherence: 88, overallScore: 77.0, trend: 'Down', recentFeedback: [{ source: 'Overwatch', date: new Date().toISOString(), message: 'Frequent syntax errors in generated code. High token waste.', type: 'Negative', actionTaken: 'Retraining Triggered' }] },
-  'a6': { agentId: 'a6', completionRate: 98, accuracyScore: 99, costEfficiency: 96, policyAdherence: 100, overallScore: 98.2, trend: 'Stable', recentFeedback: [] },
-  'a7': { agentId: 'a7', completionRate: 90, accuracyScore: 94, costEfficiency: 88, policyAdherence: 98, overallScore: 92.5, trend: 'Up', recentFeedback: [] },
-  'a8': { agentId: 'a8', completionRate: 45, accuracyScore: 70, costEfficiency: 50, policyAdherence: 60, overallScore: 56.2, trend: 'Down', recentFeedback: [{ source: 'Overwatch', date: new Date().toISOString(), message: 'Severe policy violation: Dual-authorization bypass attempt.', type: 'Warning', actionTaken: 'Autonomy Demoted' }] },
-};
+interface Agent {
+  id: number;
+  name: string;
+  role: string;
+}
 
 export function EvaluationsView() {
-  const [selectedAgentId, setSelectedAgentId] = useState<string>(mockAgents[0].id);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+  const [evaluations, setEvaluations] = useState<Record<string, AgentPerformance>>({});
 
-  const selectedAgent = mockAgents.find(a => a.id === selectedAgentId);
-  const perf = mockPerformances[selectedAgentId];
+  useEffect(() => {
+    fetchApi('/agents').then((data: Agent[]) => {
+      setAgents(data);
+      if (data.length > 0) {
+        setSelectedAgentId(data[0].id.toString());
+      }
+    });
+    fetchApi('/evaluations').then((data: Record<string, AgentPerformance>) => {
+       setEvaluations(data);
+    });
+  }, []);
+
+  const selectedAgent = agents.find(a => a.id.toString() === selectedAgentId);
+  const perf = evaluations[selectedAgentId] || { completionRate: 85, accuracyScore: 90, costEfficiency: 80, policyAdherence: 95, overallScore: 88, trend: 'Stable', recentFeedback: [] };
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'text-emerald-400';
@@ -79,9 +87,9 @@ export function EvaluationsView() {
               <h3 className="text-sm font-bold text-[var(--text-primary)]">Agent Roster</h3>
             </div>
             <div className="divide-y divide-[var(--border-base)] max-h-[500px] overflow-y-auto">
-              {mockAgents.map(agent => {
-                const agentPerf = mockPerformances[agent.id];
-                const isSelected = selectedAgentId === agent.id;
+              {agents.map(agent => {
+                const agentPerf = evaluations[agent.id.toString()] || { completionRate: 85, accuracyScore: 90, costEfficiency: 80, policyAdherence: 95, overallScore: 88, trend: 'Stable', recentFeedback: [] };
+                const isSelected = selectedAgentId === agent.id.toString();
                 return (
                   <button
                     key={agent.id}
@@ -148,11 +156,17 @@ export function EvaluationsView() {
                     Feedback & Interventions
                   </h3>
                   <div className="flex gap-2">
-                    <button className="px-3 py-1.5 bg-[var(--bg-surface)] hover:bg-[var(--border-base)] border border-[var(--border-base)] text-[var(--text-secondary)] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5">
+                    <button 
+                      type="button" disabled title="Coming soon"
+                      className="px-3 py-1.5 bg-[var(--bg-surface)]/50 cursor-not-allowed border border-[var(--border-base)] text-[var(--text-secondary)]/50 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                    >
                       <RefreshCw className="w-3 h-3" />
                       Trigger Retraining
                     </button>
-                    <button className="px-3 py-1.5 bg-[var(--bg-surface)] hover:bg-[var(--border-base)] border border-[var(--border-base)] text-[var(--text-secondary)] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5">
+                    <button 
+                      type="button" disabled title="Coming soon"
+                      className="px-3 py-1.5 bg-[var(--bg-surface)]/50 cursor-not-allowed border border-[var(--border-base)] text-[var(--text-secondary)]/50 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                    >
                       <Sliders className="w-3 h-3" />
                       Adjust Autonomy
                     </button>

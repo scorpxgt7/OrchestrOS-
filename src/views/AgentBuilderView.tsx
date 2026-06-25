@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { ArrowLeft, Brain, Command, Cpu, Database, Network, Shield, Zap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Brain, Command, Cpu, Database, Network, Shield, Zap, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
+import { fetchApi } from '../lib/api';
+import { auditService } from '../services/auditService';
 
 interface AgentBuilderViewProps {
   onViewChange?: (view: string) => void;
@@ -9,6 +11,21 @@ interface AgentBuilderViewProps {
 export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
   const [autonomyLevel, setAutonomyLevel] = useState(3);
   const [selectedMemory, setSelectedMemory] = useState<string[]>(['Global Memory']);
+  
+  const [name, setName] = useState('');
+  const [role, setRole] = useState('Specialist Agent');
+  const [departmentId, setDepartmentId] = useState<number | null>(null);
+  const [mission, setMission] = useState('');
+  const [primaryModel, setPrimaryModel] = useState('Gemini 1.5 Pro (Remote)');
+  
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // We might not have a departments API yet, but let's assume we can fetch them or just hardcode some for MVP.
+    // For MVP we can just not pass departmentId or let the backend handle it if null.
+    // Let's actually fetch agents or just set departmentId null for now.
+  }, []);
 
   const autonomyLevels = [
     { level: 1, title: 'L1: Suggested', desc: 'Recommends actions, executes nothing.', risk: 'Negligible risk. Useful for broad strategic planning.', gov: 'Advisory only. Output must be heavily verified by human operators.' },
@@ -23,6 +40,38 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
       setSelectedMemory(selectedMemory.filter(m => m !== mem));
     } else {
       setSelectedMemory([...selectedMemory, mem]);
+    }
+  };
+
+  const handleProvision = async () => {
+    if (!name.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const newAgent = await fetchApi('/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          role,
+          mission,
+          autonomyLevel,
+          memoryAccess: selectedMemory.join(', '),
+          // other config fields can be added here
+        })
+      });
+
+      await auditService.logEvent({
+        action: 'Agent Provisioned',
+        actorAgentId: newAgent.id,
+        metadata: { name, role, autonomyLevel, model: primaryModel },
+        outcome: 'success'
+      });
+
+      // Navigate back to agents list
+      if (onViewChange) onViewChange('agents');
+    } catch (err) {
+      console.error(err);
+      setIsSubmitting(false);
     }
   };
 
@@ -52,7 +101,13 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Agent Name</label>
-                <input type="text" placeholder="e.g. Content-Synth V3" className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50" />
+                <input 
+                  type="text" 
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="e.g. Content-Synth V3" 
+                  className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50" 
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Assigned Department</label>
@@ -68,7 +123,11 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">System Role</label>
-              <select className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50">
+              <select 
+                value={role}
+                onChange={e => setRole(e.target.value)}
+                className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50"
+              >
                 <option>Specialist Agent</option>
                 <option>Supervisor Agent</option>
                 <option>Department Manager</option>
@@ -80,6 +139,8 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
               <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Primary Prompt / Mission Directive</label>
               <textarea 
                 rows={4}
+                value={mission}
+                onChange={e => setMission(e.target.value)}
                 placeholder="Define the core objective, behavioral guidelines, and formatting style for this agent..."
                 className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 resize-none font-mono text-[13px]" 
               />
@@ -148,7 +209,7 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
             
             <div className="space-y-2">
               {['Global Memory', 'Department Specific', 'Audit Logs', 'Technical Docs', 'Financial Ledgers', 'Client Interactions'].map(mem => (
-                <label key={mem} className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-base)] border border-[var(--border-base)] cursor-pointer hover:bg-[#27272a]/50 transition-colors">
+                <label key={mem} onClick={() => toggleMemory(mem)} className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-base)] border border-[var(--border-base)] cursor-pointer hover:bg-[#27272a]/50 transition-colors">
                   <div className={`w-4 h-4 rounded border flex items-center justify-center
                     ${selectedMemory.includes(mem) ? 'bg-emerald-500 border-emerald-500 text-[#09090b]' : 'border-zinc-600'}`}>
                     {selectedMemory.includes(mem) && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
@@ -168,7 +229,11 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
             
             <div className="space-y-2">
               <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Primary Model</label>
-              <select className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50">
+              <select 
+                value={primaryModel}
+                onChange={e => setPrimaryModel(e.target.value)}
+                className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50"
+              >
                 <option>Gemini 1.5 Pro (Remote)</option>
                 <option>Gemini 1.5 Flash (Remote)</option>
                 <option>Local Gemma 2 9B (Local)</option>
@@ -186,15 +251,25 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
 
           <button 
             type="button"
-            disabled
-            title="Agent provisioning requires backend integration (Coming Soon)"
-            className="w-full py-3 bg-blue-600/50 cursor-not-allowed text-[var(--text-base)] font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+            onClick={handleProvision}
+            disabled={!name.trim() || isSubmitting}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-[var(--text-base)] font-bold rounded-xl transition-all flex items-center justify-center gap-2"
           >
-            <Brain className="w-5 h-5" />
-            Provision Agent (Coming Soon)
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <RefreshCw className="w-5 h-5 animate-spin" />
+                Provisioning...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Brain className="w-5 h-5" />
+                Provision Agent
+              </span>
+            )}
           </button>
         </div>
       </div>
     </div>
   );
 }
+

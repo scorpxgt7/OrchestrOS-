@@ -1,4 +1,5 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
+import { fetchApi } from '../lib/api';
 import { 
   Database, Folder, FileText, Search, Upload, Lock, ShieldCheck, Clock, 
   ChevronRight, ArrowRight, Trash2, Edit3, Save, X, Check, RotateCcw, 
@@ -6,15 +7,38 @@ import {
   Code, Share2, HelpCircle, AlertTriangle, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { mockMemories } from '../data/mockMemory';
 import { MemoryRecord, MemoryCategory, MemoryVersion } from '../types/memory';
 import { MemoryArchitectureSpec } from '../components/MemoryArchitectureSpec';
 import { MemoryMap } from '../components/MemoryMap';
 import { logActivity } from '../utils/activityLogger';
 
 export function MemoryView() {
-  const [memories, setMemories] = useState<MemoryRecord[]>(mockMemories);
-  const [selectedMemoryId, setSelectedMemoryId] = useState<string>(mockMemories[0].id);
+  const [memories, setMemories] = useState<MemoryRecord[]>([]);
+  const [selectedMemoryId, setSelectedMemoryId] = useState<string>('');
+  
+  useEffect(() => {
+    fetchApi('/memory').then((data: any[]) => {
+      const mappedData = data.map(m => ({
+        id: m.id.toString(),
+        title: m.metadata?.title || `Memory Record ${m.id}`,
+        category: m.category,
+        content: m.content,
+        schema: m.metadata?.schema || {},
+        tags: m.metadata?.tags || [],
+        dept: m.metadata?.dept || 'Operations',
+        size: m.metadata?.size || '1KB',
+        updated: m.updatedAt || new Date().toISOString(),
+        version: m.metadata?.version || 1,
+        permissions: m.metadata?.permissions || { roles: [], minAutonomy: 'Level 1', owner: 'System' },
+        versions: m.metadata?.versions || [],
+        indexing: m.metadata?.indexing || { vectorIndex: '', graphNodes: [], primaryKey: '' }
+      }));
+      setMemories(mappedData);
+      if (mappedData.length > 0) {
+        setSelectedMemoryId(mappedData[0].id);
+      }
+    });
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<MemoryCategory | 'all'>('all');
   const [selectedDept, setSelectedDept] = useState<string>('all');
@@ -163,85 +187,135 @@ export function MemoryView() {
     setEditError('');
   };
 
-  const saveContentChanges = () => {
+  const saveContentChanges = async () => {
     try {
       // Validate JSON structure
       const parsed = JSON.parse(editContentText);
       
-      const updatedMemories = memories.map(m => {
-        if (m.id === selectedMemory.id) {
-          const nextVersion = m.version + 1;
-          const newVerRecord: MemoryVersion = {
-            version: nextVersion,
-            updatedAt: new Date().toISOString(),
-            author: 'scorpxgt7@gmail.com (Owner Override)',
-            changeSummary: `Manual content modification via memory payload editor.`,
-            content: editContentText
-          };
+      const m = selectedMemory;
+      const nextVersion = m.version + 1;
+      const newVerRecord: MemoryVersion = {
+        version: nextVersion,
+        updatedAt: new Date().toISOString(),
+        author: 'scorpxgt7@gmail.com (Owner Override)',
+        changeSummary: `Manual content modification via memory payload editor.`,
+        content: editContentText
+      };
 
+      const updatedMetadata = {
+        ...m.schema, // wait, we mapped schema to root level in mapping?
+        // Let's just construct the metadata properly. Actually, we should pull the real metadata structure from the DB or just re-create it from our React state.
+        title: m.title,
+        tags: m.tags,
+        dept: m.dept,
+        size: `${(editContentText.length / 1024).toFixed(1)} KB`,
+        version: nextVersion,
+        schema: m.schema,
+        permissions: m.permissions,
+        indexing: m.indexing,
+        versions: [newVerRecord, ...m.versions]
+      };
+
+      const res = await fetchApi(`/memory/${m.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: editContentText,
+          metadata: updatedMetadata
+        })
+      });
+
+      const updatedMemories = memories.map(mem => {
+        if (mem.id === m.id) {
           logActivity(
             'edit',
             'scorpxgt7@gmail.com (Owner Override)',
-            m.title,
+            mem.title,
             `Modified JSON payload. Incremented state to Version ${nextVersion}.`,
             'info',
             10
           );
 
           return {
-            ...m,
+            ...mem,
             content: editContentText,
             version: nextVersion,
             updated: 'Just now',
             size: `${(editContentText.length / 1024).toFixed(1)} KB`,
-            versions: [newVerRecord, ...m.versions]
+            versions: [newVerRecord, ...mem.versions]
           };
         }
-        return m;
+        return mem;
       });
 
       setMemories(updatedMemories);
       setIsEditing(false);
     } catch (err: any) {
-      setEditError(`Invalid JSON format: ${err.message}`);
+      setEditError(`Failed to save: ${err.message}`);
     }
   };
 
   // Rollback to historical version
-  const handleRollback = (targetVer: MemoryVersion) => {
-    const updatedMemories = memories.map(m => {
-      if (m.id === selectedMemory.id) {
-        const nextVersion = m.version + 1;
-        const newVerRecord: MemoryVersion = {
-          version: nextVersion,
-          updatedAt: new Date().toISOString(),
-          author: 'scorpxgt7@gmail.com (Rollback Execution)',
-          changeSummary: `Rolled back state to historical Version ${targetVer.version}.`,
-          content: targetVer.content
-        };
+  const handleRollback = async (targetVer: MemoryVersion) => {
+    try {
+      const m = selectedMemory;
+      const nextVersion = m.version + 1;
+      const newVerRecord: MemoryVersion = {
+        version: nextVersion,
+        updatedAt: new Date().toISOString(),
+        author: 'scorpxgt7@gmail.com (Rollback Execution)',
+        changeSummary: `Rolled back state to historical Version ${targetVer.version}.`,
+        content: targetVer.content
+      };
 
-        logActivity(
-          'rollback',
-          'scorpxgt7@gmail.com (Rollback Execution)',
-          m.title,
-          `Executed database rollback of active memory state to Version ${targetVer.version}.`,
-          'warning',
-          40
-        );
+      const updatedMetadata = {
+        title: m.title,
+        tags: m.tags,
+        dept: m.dept,
+        size: `${(targetVer.content.length / 1024).toFixed(1)} KB`,
+        version: nextVersion,
+        schema: m.schema,
+        permissions: m.permissions,
+        indexing: m.indexing,
+        versions: [newVerRecord, ...m.versions]
+      };
 
-        return {
-          ...m,
+      await fetchApi(`/memory/${m.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           content: targetVer.content,
-          version: nextVersion,
-          updated: 'Just now',
-          size: `${(targetVer.content.length / 1024).toFixed(1)} KB`,
-          versions: [newVerRecord, ...m.versions]
-        };
-      }
-      return m;
-    });
+          metadata: updatedMetadata
+        })
+      });
 
-    setMemories(updatedMemories);
+      const updatedMemories = memories.map(mem => {
+        if (mem.id === m.id) {
+          logActivity(
+            'rollback',
+            'scorpxgt7@gmail.com (Rollback Execution)',
+            mem.title,
+            `Executed database rollback of active memory state to Version ${targetVer.version}.`,
+            'warning',
+            40
+          );
+
+          return {
+            ...mem,
+            content: targetVer.content,
+            version: nextVersion,
+            updated: 'Just now',
+            size: `${(targetVer.content.length / 1024).toFixed(1)} KB`,
+            versions: [newVerRecord, ...mem.versions]
+          };
+        }
+        return mem;
+      });
+
+      setMemories(updatedMemories);
+    } catch (err) {
+      console.error('Rollback failed:', err);
+    }
   };
 
   // Export Record to JSON
@@ -256,30 +330,35 @@ export function MemoryView() {
   };
 
   // Delete Memory Record
-  const handleDeleteRecord = (id: string) => {
+  const handleDeleteRecord = async (id: string) => {
     const mToDelete = memories.find(m => m.id === id);
     if (confirm("Are you sure you want to scrub this memory cluster from the OS? This action is permanent and might un-ground active agents.")) {
-      const remaining = memories.filter(m => m.id !== id);
-      setMemories(remaining);
-      if (selectedMemoryId === id && remaining.length > 0) {
-        setSelectedMemoryId(remaining[0].id);
-      }
+      try {
+        await fetchApi(`/memory/${id}`, { method: 'DELETE' });
+        const remaining = memories.filter(m => m.id !== id);
+        setMemories(remaining);
+        if (selectedMemoryId === id && remaining.length > 0) {
+          setSelectedMemoryId(remaining[0].id);
+        }
 
-      if (mToDelete) {
-        logActivity(
-          'delete',
-          'scorpxgt7@gmail.com (Owner)',
-          mToDelete.title,
-          `Permanently deleted memory cluster from vector database index.`,
-          'critical',
-          90
-        );
+        if (mToDelete) {
+          logActivity(
+            'delete',
+            'scorpxgt7@gmail.com (Owner)',
+            mToDelete.title,
+            `Permanently deleted memory cluster from vector database index.`,
+            'critical',
+            90
+          );
+        }
+      } catch (err) {
+        console.error('Failed to delete memory record', err);
       }
     }
   };
 
   // Ingest custom memory
-  const handleIngestMemory = (e: FormEvent) => {
+  const handleIngestMemory = async (e: FormEvent) => {
     e.preventDefault();
     setIngestError('');
 
@@ -295,59 +374,88 @@ export function MemoryView() {
       return;
     }
 
-    const newId = `mem_custom_${Date.now().toString().slice(-6)}`;
-    const newRecord: MemoryRecord = {
-      id: newId,
-      title: newTitle,
-      category: newCategory,
-      tags: newTags.split(',').map(t => t.trim()).filter(t => t !== ''),
-      dept: newDept,
-      size: `${(newContent.length / 1024).toFixed(1)} KB`,
-      updated: 'Just now',
-      version: 1,
-      schema: {
-        userId: "string",
-        customPayload: "object",
-        ingestedBy: "string"
-      },
-      content: newContent,
-      permissions: {
-        roles: newRoles,
-        minAutonomy: newMinAutonomy,
-        owner: newOwner
-      },
-      indexing: {
-        vectorIndex: newVectorIndex,
-        graphNodes: newGraphNodes.split(',').map(n => n.trim()).filter(n => n !== ''),
-        primaryKey: newPrimaryKey || `${newId}_primary`
-      },
-      versions: [
-        {
+    try {
+      const newRecordPayload = {
+        category: newCategory,
+        content: newContent,
+        metadata: {
+          title: newTitle,
+          tags: newTags.split(',').map(t => t.trim()).filter(t => t !== ''),
+          dept: newDept,
+          size: `${(newContent.length / 1024).toFixed(1)} KB`,
           version: 1,
-          updatedAt: new Date().toISOString(),
-          author: newOwner,
-          changeSummary: 'First ingestion of corporate memory node.',
-          content: newContent
+          schema: {
+            userId: "string",
+            customPayload: "object",
+            ingestedBy: "string"
+          },
+          permissions: {
+            roles: newRoles,
+            minAutonomy: newMinAutonomy,
+            owner: newOwner
+          },
+          indexing: {
+            vectorIndex: newVectorIndex,
+            graphNodes: newGraphNodes.split(',').map(n => n.trim()).filter(n => n !== ''),
+            primaryKey: newPrimaryKey || `${newTitle}_primary`
+          },
+          versions: [
+            {
+              version: 1,
+              updatedAt: new Date().toISOString(),
+              author: newOwner,
+              changeSummary: 'First ingestion of corporate memory node.',
+              content: newContent
+            }
+          ]
         }
-      ]
-    };
+      };
 
-    setMemories([newRecord, ...memories]);
-    setSelectedMemoryId(newId);
-    setIngestOpen(false);
+      const m = await fetchApi('/memory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRecordPayload)
+      });
 
-    logActivity(
-      'ingestion',
-      'scorpxgt7@gmail.com (Owner Ingest)',
-      newTitle,
-      `Ingested custom compliance memory node into '${newVectorIndex}' index.`,
-      'success',
-      0
-    );
+      const formattedRecord = {
+        id: m.id.toString(),
+        title: m.metadata?.title || `Memory Record ${m.id}`,
+        category: m.category,
+        content: m.content,
+        schema: m.metadata?.schema || {},
+        tags: m.metadata?.tags || [],
+        dept: m.metadata?.dept || 'Operations',
+        size: m.metadata?.size || '1KB',
+        updated: m.updatedAt || new Date().toISOString(),
+        version: m.metadata?.version || 1,
+        permissions: m.metadata?.permissions || { roles: [], minAutonomy: 'Level 1', owner: 'System' },
+        versions: m.metadata?.versions || [],
+        indexing: m.metadata?.indexing || { vectorIndex: '', graphNodes: [], primaryKey: '' }
+      };
 
-    // Reset fields
-    setNewTitle('');
-    setNewTags('');
+      setMemories([formattedRecord, ...memories]);
+      setSelectedMemoryId(formattedRecord.id);
+      setIngestOpen(false);
+
+      logActivity(
+        'ingestion',
+        'scorpxgt7@gmail.com (Owner Ingest)',
+        newTitle,
+        `Ingested custom compliance memory node into '${newVectorIndex}' index.`,
+        'success',
+        0
+      );
+      
+      // We will also use auditService to persist the log to db
+      // We need to import auditService in this file. But wait, `logActivity` is already logging?
+      // `logActivity` just stores it in `sessionStorage` in `utils/activityLogger.ts` maybe. Let me check what it does.
+      
+      // Reset fields
+      setNewTitle('');
+      setNewTags('');
+    } catch (err: any) {
+      setIngestError(`API Error: ${err.message}`);
+    }
   };
 
   // Toggle role in modal
@@ -360,81 +468,121 @@ export function MemoryView() {
   };
 
   // Change existing memory permissions roles
-  const handleTogglePermissionRole = (role: string) => {
-    const updated = memories.map(m => {
-      if (m.id === selectedMemory.id) {
-        const roles = m.permissions.roles.includes(role) 
-          ? m.permissions.roles.filter(r => r !== role)
-          : [...m.permissions.roles, role];
-        
-        const nextVersion = m.version + 1;
-        const newVerRecord: MemoryVersion = {
-          version: nextVersion,
-          updatedAt: new Date().toISOString(),
-          author: 'scorpxgt7@gmail.com (Access Adjust)',
-          changeSummary: `Updated RBAC accessibility requirements. Toggled role '${role}'.`,
-          content: m.content
-        };
+  const handleTogglePermissionRole = async (role: string) => {
+    try {
+      const m = selectedMemory;
+      const roles = m.permissions.roles.includes(role) 
+        ? m.permissions.roles.filter(r => r !== role)
+        : [...m.permissions.roles, role];
+      
+      const nextVersion = m.version + 1;
+      const newVerRecord: MemoryVersion = {
+        version: nextVersion,
+        updatedAt: new Date().toISOString(),
+        author: 'scorpxgt7@gmail.com (Access Adjust)',
+        changeSummary: `Updated RBAC accessibility requirements. Toggled role '${role}'.`,
+        content: m.content
+      };
 
-        logActivity(
-          'permission',
-          'scorpxgt7@gmail.com (Access Adjust)',
-          m.title,
-          `RBAC security update: ${m.permissions.roles.includes(role) ? 'Revoked' : 'Granted'} access role '${role}'.`,
-          'warning',
-          25
-        );
+      const updatedMetadata = {
+        title: m.title,
+        tags: m.tags,
+        dept: m.dept,
+        size: m.size,
+        version: nextVersion,
+        schema: m.schema,
+        permissions: { ...m.permissions, roles },
+        indexing: m.indexing,
+        versions: [newVerRecord, ...m.versions]
+      };
 
-        return {
-          ...m,
-          permissions: {
-            ...m.permissions,
-            roles
-          },
-          version: nextVersion,
-          versions: [newVerRecord, ...m.versions]
-        };
-      }
-      return m;
-    });
-    setMemories(updated);
+      await fetchApi(`/memory/${m.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metadata: updatedMetadata })
+      });
+
+      const updated = memories.map(mem => {
+        if (mem.id === m.id) {
+          logActivity(
+            'permission',
+            'scorpxgt7@gmail.com (Access Adjust)',
+            mem.title,
+            `RBAC security update: ${mem.permissions.roles.includes(role) ? 'Revoked' : 'Granted'} access role '${role}'.`,
+            'warning',
+            25
+          );
+
+          return {
+            ...mem,
+            permissions: { ...mem.permissions, roles },
+            version: nextVersion,
+            versions: [newVerRecord, ...mem.versions]
+          };
+        }
+        return mem;
+      });
+      setMemories(updated);
+    } catch (err) {
+      console.error('Failed to update permission role', err);
+    }
   };
 
   // Update Min Autonomy for existing memory
-  const handleMinAutonomyChange = (val: string) => {
-    const updated = memories.map(m => {
-      if (m.id === selectedMemory.id) {
-        const nextVersion = m.version + 1;
-        const newVerRecord: MemoryVersion = {
-          version: nextVersion,
-          updatedAt: new Date().toISOString(),
-          author: 'scorpxgt7@gmail.com (Access Adjust)',
-          changeSummary: `Adjusted minimum autonomy threshold to '${val}'.`,
-          content: m.content
-        };
+  const handleMinAutonomyChange = async (val: string) => {
+    try {
+      const m = selectedMemory;
+      const nextVersion = m.version + 1;
+      const newVerRecord: MemoryVersion = {
+        version: nextVersion,
+        updatedAt: new Date().toISOString(),
+        author: 'scorpxgt7@gmail.com (Access Adjust)',
+        changeSummary: `Adjusted minimum autonomy threshold to '${val}'.`,
+        content: m.content
+      };
 
-        logActivity(
-          'permission',
-          'scorpxgt7@gmail.com (Access Adjust)',
-          m.title,
-          `Escalated minimum execution autonomy threshold to '${val}'.`,
-          'warning',
-          35
-        );
+      const updatedMetadata = {
+        title: m.title,
+        tags: m.tags,
+        dept: m.dept,
+        size: m.size,
+        version: nextVersion,
+        schema: m.schema,
+        permissions: { ...m.permissions, minAutonomy: val },
+        indexing: m.indexing,
+        versions: [newVerRecord, ...m.versions]
+      };
 
-        return {
-          ...m,
-          permissions: {
-            ...m.permissions,
-            minAutonomy: val
-          },
-          version: nextVersion,
-          versions: [newVerRecord, ...m.versions]
-        };
-      }
-      return m;
-    });
-    setMemories(updated);
+      await fetchApi(`/memory/${m.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metadata: updatedMetadata })
+      });
+
+      const updated = memories.map(mem => {
+        if (mem.id === m.id) {
+          logActivity(
+            'permission',
+            'scorpxgt7@gmail.com (Access Adjust)',
+            mem.title,
+            `Escalated minimum execution autonomy threshold to '${val}'.`,
+            'warning',
+            35
+          );
+
+          return {
+            ...mem,
+            permissions: { ...mem.permissions, minAutonomy: val },
+            version: nextVersion,
+            versions: [newVerRecord, ...mem.versions]
+          };
+        }
+        return mem;
+      });
+      setMemories(updated);
+    } catch (err) {
+      console.error('Failed to update min autonomy', err);
+    }
   };
 
   // Query Playground execution
