@@ -36,6 +36,10 @@ interface Agent {
   id: number;
   name: string;
   role: string;
+  department?: {
+    id: number;
+    name: string;
+  };
 }
 
 export function EvaluationsView() {
@@ -93,7 +97,7 @@ export function EvaluationsView() {
                 return (
                   <button
                     key={agent.id}
-                    onClick={() => setSelectedAgentId(agent.id)}
+                    onClick={() => setSelectedAgentId(agent.id.toString())}
                     className={`w-full text-left p-4 hover:bg-[var(--bg-base)] transition-colors flex items-center justify-between
                       ${isSelected ? 'bg-[var(--bg-base)] border-l-2 border-l-blue-500' : ''}`}
                   >
@@ -131,7 +135,7 @@ export function EvaluationsView() {
                   <h2 className="text-2xl font-bold text-[var(--text-primary)]">{selectedAgent.name}</h2>
                   <div className="flex items-center gap-3 mt-2 text-sm">
                     <span className="text-[var(--text-secondary)] bg-[var(--bg-base)] px-2.5 py-1 rounded-md border border-[var(--border-base)]">{selectedAgent.role}</span>
-                    <span className="text-[var(--text-secondary)] bg-[var(--bg-base)] px-2.5 py-1 rounded-md border border-[var(--border-base)]">{selectedAgent.department}</span>
+                    <span className="text-[var(--text-secondary)] bg-[var(--bg-base)] px-2.5 py-1 rounded-md border border-[var(--border-base)]">{selectedAgent.department?.name || 'Central Swarm'}</span>
                   </div>
                 </div>
                 <div className={`flex flex-col items-center justify-center p-4 rounded-xl border ${getBgScoreColor(perf.overallScore)}`}>

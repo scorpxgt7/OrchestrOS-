@@ -28,6 +28,8 @@ interface Agent {
   department?: { name: string };
   skills: string[];
   responsibilities: string[];
+  tasksCompleted?: number;
+  memoryAccess?: string | string[] | null;
 }
 
 interface DataPoint {
@@ -555,7 +557,19 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
               <div className="bg-[var(--bg-base)] border border-[var(--border-base)] p-3 rounded-xl flex flex-col justify-between">
                 <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase font-mono block mb-1">Cluster Scopes</span>
                 <span className="text-[11px] font-mono text-blue-400 font-semibold truncate">
-                  {selectedAgent.memoryAccess.slice(0, 2).join(', ')}
+                  {(() => {
+                    const mem = selectedAgent.memoryAccess;
+                    if (!mem) return 'None';
+                    if (Array.isArray(mem)) return mem.slice(0, 2).join(', ');
+                    if (typeof mem === 'string') {
+                      try {
+                        const parsed = JSON.parse(mem);
+                        if (Array.isArray(parsed)) return parsed.slice(0, 2).join(', ');
+                      } catch (e) {}
+                      return mem.split(',').map(s => s.trim()).slice(0, 2).join(', ');
+                    }
+                    return 'None';
+                  })()}
                 </span>
               </div>
 
@@ -677,7 +691,7 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
                   <div>
                     <h4 className="font-bold text-[var(--text-primary)] text-sm truncate">{agent.name}</h4>
                     <p className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider truncate mt-0.5">{agent.role}</p>
-                    <p className="text-[10px] text-[var(--text-tertiary)] mt-1">{agent.department}</p>
+                    <p className="text-[10px] text-[var(--text-tertiary)] mt-1">{agent.department?.name || 'Operations'}</p>
                   </div>
                 </div>
 
@@ -693,7 +707,7 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
 
                   <div className="text-right">
                     <span className="text-[9px] font-mono text-[var(--text-tertiary)] uppercase block">Tasks completed</span>
-                    <span className="text-xs font-mono font-bold text-[var(--text-primary)]">{agent.tasksCompleted.toLocaleString()}</span>
+                    <span className="text-xs font-mono font-bold text-[var(--text-primary)]">{(agent.tasksCompleted || 0).toLocaleString()}</span>
                   </div>
                 </div>
               </motion.div>

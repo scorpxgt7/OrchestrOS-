@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Breadcrumbs } from './components/Breadcrumbs';
 import { DashboardView } from './views/DashboardView';
-import { AgentsView } from './views/AgentsView';
+import { AgentHierarchyView } from './views/AgentHierarchyView';
 import { WorkflowsView } from './views/WorkflowsView';
 import { ArchitectureView } from './views/ArchitectureView';
 import { GovernanceView } from './views/GovernanceView';
@@ -82,7 +82,7 @@ export default function App() {
       case 'org':
         return <OrganizationBuilderView />;
       case 'agents':
-        return <AgentsView onViewChange={handleViewChange} />;
+        return <AgentHierarchyView onViewChange={handleViewChange} />;
       case 'agent-builder':
         return <AgentBuilderView onViewChange={handleViewChange} />;
       case 'workflows':

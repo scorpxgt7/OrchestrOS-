@@ -30,7 +30,7 @@ router.post('/', requireAuth, async (req: any, res) => {
     const wfId = wfResult[0].id;
 
     // Create Agents
-    const createdAgents = await db.insert(agents).values([
+    const alphaAgentResult = await db.insert(agents).values([
       {
         organizationId: orgId,
         departmentId: deptId,
@@ -40,7 +40,11 @@ router.post('/', requireAuth, async (req: any, res) => {
         autonomyLevel: 5,
         skills: ['Task Decomposition', 'Routing', 'Strategy'],
         status: 'active'
-      },
+      }
+    ]).returning();
+    const alphaAgent = alphaAgentResult[0];
+
+    const childAgentsResult = await db.insert(agents).values([
       {
         organizationId: orgId,
         departmentId: deptId,
@@ -49,7 +53,8 @@ router.post('/', requireAuth, async (req: any, res) => {
         mission: 'Monitor system activity and detect anomalies',
         autonomyLevel: 4,
         skills: ['Monitoring', 'Risk Assessment'],
-        status: 'active'
+        status: 'active',
+        reportingManager: alphaAgent.id
       },
       {
         organizationId: orgId,
@@ -59,9 +64,12 @@ router.post('/', requireAuth, async (req: any, res) => {
         mission: 'Write and review code',
         autonomyLevel: 2,
         skills: ['TypeScript', 'React', 'Node.js'],
-        status: 'active'
+        status: 'active',
+        reportingManager: alphaAgent.id
       }
     ]).returning();
+
+    const createdAgents = [alphaAgent, ...childAgentsResult];
 
     // Create Tasks
     await db.insert(tasks).values([
