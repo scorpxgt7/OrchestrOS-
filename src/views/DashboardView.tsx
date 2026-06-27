@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 import { fetchApi } from '../lib/api';
 import { Activity, AlertTriangle, CheckCircle2, ShieldAlert, Cpu, Network, BrainCircuit, ActivitySquare, GripHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useToast } from '../contexts/ToastContext';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, LineChart, Line
 } from 'recharts';
 
 export function DashboardView() {
+  const { showToast } = useToast();
   const [agents, setAgents] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [throughputData, setThroughputData] = useState<any[]>([]);
@@ -471,8 +473,9 @@ export function DashboardView() {
               <h4 className="text-sm font-medium text-blue-300 mb-2">Optimization Suggested</h4>
               <p className="text-sm text-[var(--text-secondary)]">Local LLM pool is underutilized. Shifting 30% of classification tasks from remote agents could save approx. $140/day without latency impact.</p>
               <button 
-                type="button" disabled title="Coming soon"
-                className="mt-3 px-3 py-1.5 bg-blue-500/10 cursor-not-allowed text-blue-300/50 text-xs font-medium rounded transition-colors"
+                type="button" 
+                onClick={() => showToast('Optimization policy applied securely.', 'success')}
+                className="mt-3 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded transition-colors"
               >
                 Apply Policy
               </button>

@@ -1,21 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle2, Clock, Globe, Key, Link as LinkIcon, Plus, Server, ShieldCheck, Zap } from 'lucide-react';
 import { auditService } from '../services/auditService';
 import { LocalLLMBridge } from '../components/LocalLLMBridge';
+import { fetchApi } from '../lib/api';
+
+interface Integration {
+  id: string;
+  name: string;
+  category: string;
+  status: string;
+  lastSync: string | null;
+  icon: string;
+}
 
 export function IntegrationsView() {
   const [showLocalLLMBridge, setShowLocalLLMBridge] = useState(false);
-  const [integrations, setIntegrations] = useState([
-    { id: 'local_llm', name: 'Android Local LLM Core', category: 'Privacy First AI', status: 'Connected', lastSync: 'Real-time', icon: 'M17,1H7A2,2 0 0,0 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3A2,2 0 0,0 17,1M17,19H7V5H17V19Z' },
-    { id: 'slack', name: 'Slack', category: 'Communication', status: 'Connected', lastSync: '10m ago', icon: 'M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M9,10A1,1 0 0,1 10,9A1,1 0 0,1 11,10V14A1,1 0 0,1 10,15A1,1 0 0,1 9,14V10M13,10A1,1 0 0,1 14,9A1,1 0 0,1 15,10V14A1,1 0 0,1 14,15A1,1 0 0,1 13,14V10Z' },
-    { id: 'google', name: 'Google Workspace', category: 'Productivity', status: 'Connected', lastSync: '2h ago', icon: 'M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1V11.1Z' },
-    { id: 'github', name: 'GitHub', category: 'Development', status: 'Disconnected', lastSync: 'Never', icon: 'M12,2A10,10 0 0,0 2,12C2,16.42 4.87,20.17 8.84,21.5C9.34,21.58 9.5,21.27 9.5,21V19.31C6.73,19.91 6.14,17.97 6.14,17.97C5.68,16.81 5.03,16.5 5.03,16.5C4.12,15.88 5.1,15.9 5.1,15.9C6.1,15.97 6.63,16.93 6.63,16.93C7.5,18.45 8.97,18 9.54,17.76C9.63,17.11 9.89,16.67 10.17,16.42C7.95,16.17 5.62,15.31 5.62,11.5C5.62,10.39 6,9.5 6.65,8.79C6.55,8.54 6.2,7.5 6.75,6.15C6.75,6.15 7.59,5.88 9.5,7.17C10.29,6.95 11.15,6.84 12,6.84C12.85,6.84 13.71,6.95 14.5,7.17C16.41,5.88 17.25,6.15 17.25,6.15C17.8,7.5 17.45,8.54 17.35,8.79C18,9.5 18.38,10.39 18.38,11.5C18.38,15.32 16.04,16.16 13.81,16.41C14.17,16.72 14.5,17.33 14.5,18.26V21C14.5,21.27 14.66,21.59 15.17,21.5C19.14,20.16 22,16.42 22,12A10,10 0 0,0 12,2Z' },
-    { id: 'notion', name: 'Notion', category: 'Knowledge', status: 'Disconnected', lastSync: 'Never', icon: 'M4,4H20V20H4V4M6,6V18H18V6H6M8,8H16V16H8V8Z' }, // Simplified mock icon
-    { id: 'salesforce', name: 'Salesforce', category: 'CRM', status: 'Disconnected', lastSync: 'Never', icon: 'M17.5,9.5A2.5,2.5 0 0,0 15,12H14.5V13H15A3.5,3.5 0 0,1 15,20H7A3,3 0 0,1 7,14V13H7.5A2.5,2.5 0 0,0 7.5,8H10A4,4 0 0,1 17.5,9.5M10.5,3A5,5 0 0,0 5.5,8V12H4.5A4.5,4.5 0 0,0 4.5,21H16A4.5,4.5 0 0,0 20.5,16.5C20.5,14.63 19.36,12.97 17.76,12.3A4.5,4.5 0 0,0 15,5H14.5C14.15,3.85 13.1,3 11.85,3H10.5Z' }, // Cloud-ish icon
-  ]);
-
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchApi('/integrations').then(setIntegrations);
+  }, []);
 
   const handleConnect = async (id: string, name: string) => {
     if (id === 'local_llm') {
@@ -23,9 +29,19 @@ export function IntegrationsView() {
       return;
     }
     setIsConnecting(id);
+    
     // Simulate OAuth flow
     setTimeout(async () => {
-      setIntegrations(integrations.map(i => i.id === id ? { ...i, status: 'Connected', lastSync: 'Just now' } : i));
+      try {
+        const updated = await fetchApi(`/integrations/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'Connected', lastSync: 'Just now' })
+        });
+        setIntegrations(integrations.map(i => i.id === id ? updated : i));
+      } catch (err) {
+        console.error("Failed to connect", err);
+      }
       setIsConnecting(null);
       
       await auditService.logEvent({
@@ -38,7 +54,17 @@ export function IntegrationsView() {
 
   const handleDisconnect = async (id: string, name: string) => {
     if (!confirm(`Disconnect ${name}? External agents relying on this service might fail.`)) return;
-    setIntegrations(integrations.map(i => i.id === id ? { ...i, status: 'Disconnected', lastSync: 'Never' } : i));
+    
+    try {
+      const updated = await fetchApi(`/integrations/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Disconnected', lastSync: 'Never' })
+      });
+      setIntegrations(integrations.map(i => i.id === id ? updated : i));
+    } catch (err) {
+      console.error("Failed to disconnect", err);
+    }
     
     await auditService.logEvent({
       action: `Integration Disconnected`,

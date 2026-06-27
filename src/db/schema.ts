@@ -179,6 +179,18 @@ export const auditLogs = pgTable('audit_logs', {
   metadata: jsonb('metadata'),
 });
 
+export const integrations = pgTable('integrations', {
+  id: text('id').primaryKey(),
+  organizationId: integer('organization_id').references(() => organizations.id).notNull(),
+  name: text('name').notNull(),
+  category: text('category').notNull(),
+  status: text('status').notNull(),
+  lastSync: text('last_sync'),
+  icon: text('icon').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 export const incidents = pgTable('incidents', {
   id: serial('id').primaryKey(),
   organizationId: integer('organization_id').references(() => organizations.id).notNull(),
@@ -209,6 +221,7 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   memoryRecords: many(memoryRecords),
   auditLogs: many(auditLogs),
   incidents: many(incidents),
+  integrations: many(integrations),
 }));
 
 export const departmentsRelations = relations(departments, ({ one, many }) => ({

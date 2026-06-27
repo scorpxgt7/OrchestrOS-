@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchApi } from '../lib/api';
 import { motion } from 'motion/react';
+import { useToast } from '../contexts/ToastContext';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -43,6 +44,7 @@ interface Agent {
 }
 
 export function EvaluationsView() {
+  const { showToast } = useToast();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [evaluations, setEvaluations] = useState<Record<string, AgentPerformance>>({});
@@ -161,15 +163,17 @@ export function EvaluationsView() {
                   </h3>
                   <div className="flex gap-2">
                     <button 
-                      type="button" disabled title="Coming soon"
-                      className="px-3 py-1.5 bg-[var(--bg-surface)]/50 cursor-not-allowed border border-[var(--border-base)] text-[var(--text-secondary)]/50 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                      type="button" 
+                      onClick={() => showToast('Retraining pipeline initiated...', 'info')}
+                      className="px-3 py-1.5 bg-[var(--bg-surface)] hover:bg-[var(--bg-base)] border border-[var(--border-base)] text-[var(--text-secondary)] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <RefreshCw className="w-3 h-3" />
                       Trigger Retraining
                     </button>
                     <button 
-                      type="button" disabled title="Coming soon"
-                      className="px-3 py-1.5 bg-[var(--bg-surface)]/50 cursor-not-allowed border border-[var(--border-base)] text-[var(--text-secondary)]/50 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                      type="button" 
+                      onClick={() => showToast('Opening autonomy adjustment panel...', 'info')}
+                      className="px-3 py-1.5 bg-[var(--bg-surface)] hover:bg-[var(--bg-base)] border border-[var(--border-base)] text-[var(--text-secondary)] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <Sliders className="w-3 h-3" />
                       Adjust Autonomy

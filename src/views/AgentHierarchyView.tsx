@@ -119,32 +119,7 @@ export function AgentHierarchyView({ onViewChange }: { onViewChange?: (view: str
     if (agentLogs.length > 0) return agentLogs;
     if (!selectedAgent) return [];
 
-    return [
-      {
-        id: 'mock-1',
-        action: 'Agent Node Bootstrapped',
-        timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-        outcome: 'success',
-        riskScore: 10,
-        metadata: { bootSequence: 'success', memoryHeuristics: 'loaded' }
-      },
-      {
-        id: 'mock-2',
-        action: 'System Registration Completed',
-        timestamp: new Date(Date.now() - 3600000 * 1.95).toISOString(),
-        outcome: 'success',
-        riskScore: 15,
-        metadata: { registryPath: 'central.swarm.nodes' }
-      },
-      {
-        id: 'mock-3',
-        action: 'Memory Partition Linked',
-        timestamp: new Date(Date.now() - 3600000 * 1.8).toISOString(),
-        outcome: 'success',
-        riskScore: 12,
-        metadata: { partitions: selectedAgent.memoryAccess || 'Central Memory' }
-      }
-    ];
+    return [];
   }, [agentLogs, selectedAgent]);
 
   // Zoom handlers

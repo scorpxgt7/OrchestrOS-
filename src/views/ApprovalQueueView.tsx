@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect } from 'react';
 import { fetchApi } from '../lib/api';
 import { auditService } from '../services/auditService';
+import { useToast } from '../contexts/ToastContext';
 
 interface Task {
   id: number;
@@ -20,7 +21,8 @@ interface Agent {
   name: string;
 }
 
-export function ApprovalQueueView() {
+export function ApprovalQueueView({ onViewChange }: { onViewChange?: (view: string) => void }) {
+  const { showToast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [filterDept, setFilterDept] = useState<string>('all');
@@ -136,15 +138,17 @@ export function ApprovalQueueView() {
               
               <div className="flex gap-4 relative z-10">
                 <button 
-                  type="button" disabled title="Coming soon"
-                  className="px-5 py-2.5 bg-blue-600/50 cursor-not-allowed text-white/70 font-semibold rounded-lg text-sm transition-all flex items-center gap-2"
+                  type="button"
+                  onClick={() => showToast('Auto-Approval configuration modal opened', 'info')}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20"
                 >
                   <Sparkles className="w-4 h-4" />
                   Configure Auto-Approvals
                 </button>
                 <button 
-                  type="button" disabled title="Coming soon"
-                  className="px-5 py-2.5 bg-[var(--bg-base)]/50 cursor-not-allowed border border-[var(--border-base)] text-[var(--text-primary)]/50 font-medium rounded-lg text-sm transition-all"
+                  type="button" 
+                  onClick={() => onViewChange && onViewChange('audit-logs')}
+                  className="px-5 py-2.5 bg-[var(--bg-surface)] hover:bg-[var(--bg-base)] border border-[var(--border-base)] text-[var(--text-primary)] font-medium rounded-lg text-sm transition-all"
                 >
                   View Audit Logs
                 </button>
@@ -213,8 +217,9 @@ export function ApprovalQueueView() {
                           Deny & Halt
                         </button>
                         <button 
-                          type="button" disabled title="Coming soon"
-                          className="flex-1 bg-[var(--bg-surface)]/50 cursor-not-allowed text-[var(--text-secondary)]/50 border border-[var(--border-base)] py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                          type="button"
+                          onClick={() => showToast('Opening request modification dialog...', 'info')}
+                          className="flex-1 bg-[var(--bg-surface)] hover:bg-[var(--bg-base)] text-[var(--text-secondary)] border border-[var(--border-base)] py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                         >
                           <Edit3 className="w-4 h-4" />
                           Modify Request

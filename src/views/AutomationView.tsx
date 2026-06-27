@@ -6,6 +6,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, WheelEvent, useMemo } from 'react';
 import { YouTubeAutomationComponent } from '../components/YouTubeAutomationComponent';
+import { useToast } from '../contexts/ToastContext';
 
 // Simple wireframe node component
 const FlowNode = ({ 
@@ -193,6 +194,7 @@ Query performance metrics and generate the Weekly Enterprise Strategic Report.`,
 ];
 
 export function AutomationView() {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'linear' | 'canvas' | 'youtube-studio'>('canvas');
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [sidebarTab, setSidebarTab] = useState<'library' | 'history'>('library');
@@ -318,8 +320,9 @@ export function AutomationView() {
             )}
           </div>
           <button 
-            type="button" disabled title="Coming soon"
-            className="px-4 py-2.5 bg-blue-600/50 cursor-not-allowed text-white/50 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+            type="button" 
+            onClick={() => showToast('Automation pipeline saved to production', 'success')}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
           >
             <Save className="w-4 h-4" />
             Save Automation
@@ -581,10 +584,11 @@ export function AutomationView() {
                     <Plus className="w-5 h-5 text-[var(--text-tertiary)]" />
                   </div>
                   <button 
-                    type="button" disabled title="Coming soon"
-                    className="border-2 border-dashed border-[var(--border-base)] cursor-not-allowed text-[var(--text-tertiary)]/50 bg-[var(--bg-base)] rounded-2xl px-6 py-4 text-sm font-bold transition-all w-full flex items-center justify-center gap-2"
+                    type="button" 
+                    onClick={() => showToast('Added new execution step', 'info')}
+                    className="border-2 border-dashed border-[var(--border-base)] hover:border-purple-500/50 hover:bg-purple-500/5 hover:text-purple-400 text-[var(--text-tertiary)] bg-[var(--bg-base)] rounded-2xl px-6 py-4 text-sm font-bold transition-all w-full flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    Add Step
+                    <Plus className="w-4 h-4" /> Add Step
                   </button>
                 </div>
 

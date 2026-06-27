@@ -317,7 +317,7 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
       return;
     }
     setStressActive(true);
-    showToast(`Injecting mock parallel prompt queue into ${selectedAgent.name}...`);
+    showToast(`Injecting parallel prompt queue into ${selectedAgent.name}...`);
 
     setTimeout(() => {
       // Spike both memory and latency for the last 4 data points

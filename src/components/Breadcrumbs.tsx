@@ -8,7 +8,7 @@ interface BreadcrumbsProps {
   onToggleActivityFeed?: () => void;
 }
 
-export function Breadcrumbs({ currentView, viewHistory, onViewChange, onGoBack, onToggleActivityFeed }: BreadcrumbsProps) {
+export function Breadcrumbs({ currentView, viewHistory, onViewChange, onGoBack, onToggleActivityFeed, onToggleNotifications }: BreadcrumbsProps & { onToggleNotifications?: () => void }) {
   const getViewInfo = (viewId: string) => {
     switch (viewId) {
       case 'dashboard': return { icon: <Home className="w-4 h-4" />, label: 'Platform' };
@@ -71,14 +71,25 @@ export function Breadcrumbs({ currentView, viewHistory, onViewChange, onGoBack, 
         })}
       </div>
 
-      <div className="ml-2 sm:ml-auto flex items-center shrink-0">
+      <div className="ml-2 sm:ml-auto flex items-center shrink-0 gap-2">
+        {onToggleNotifications && (
+          <button
+            onClick={onToggleNotifications}
+            className="flex items-center justify-center p-1.5 hover:bg-[var(--bg-surface)] rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors relative"
+            title="Notifications"
+          >
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full border border-[var(--bg-base)]"></span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          </button>
+        )}
+        
         {onToggleActivityFeed && (
           <button
             onClick={onToggleActivityFeed}
             className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-surface)] hover:bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors shadow-sm relative group"
             title="Global Activity Feed"
           >
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-[var(--bg-surface)]"></span>
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-purple-500 rounded-full border-2 border-[var(--bg-surface)]"></span>
             <span className="hidden sm:inline">Activity Feed</span>
           </button>
         )}

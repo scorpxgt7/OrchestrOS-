@@ -20,6 +20,7 @@ import { GlobalActivityFeed } from './components/GlobalActivityFeed';
 import { LockScreen } from './components/LockScreen';
 import { CommandPalette } from './components/CommandPalette';
 import { GuidedTour } from './components/GuidedTour';
+import { NotificationCenter } from './components/NotificationCenter';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchApi } from './lib/api';
 
@@ -30,6 +31,7 @@ export default function App() {
   const [accentColor, setAccentColor] = useState('accent-blue');
   const [isNavigating, setIsNavigating] = useState(false);
   const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
@@ -124,7 +126,7 @@ export default function App() {
       case 'memory':
         return <MemoryView />;
       case 'approvals':
-        return <ApprovalQueueView />;
+        return <ApprovalQueueView onViewChange={handleViewChange} />;
       case 'automations':
         return <AutomationView />;
       case 'integrations':
@@ -159,6 +161,7 @@ export default function App() {
             onViewChange={handleViewChange}
             onGoBack={handleGoBack}
             onToggleActivityFeed={() => setIsActivityFeedOpen(true)}
+            onToggleNotifications={() => setIsNotificationsOpen(true)}
           />
           <div className="flex-1 relative">
             <AnimatePresence mode="wait">
@@ -212,6 +215,7 @@ export default function App() {
       </main>
       <GlobalActivityFeed isOpen={isActivityFeedOpen} onClose={() => setIsActivityFeedOpen(false)} />
       <LockScreen />
+      <NotificationCenter isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
       <GuidedTour currentView={currentView} />
       <CommandPalette
         isOpen={isCommandPaletteOpen}
