@@ -1,79 +1,77 @@
-import { ChevronRight, Home } from 'lucide-react';
+import { ChevronRight, Home, ArrowLeft, Network, Users, Workflow, Monitor, Gavel, History, Database, CheckSquare, Settings } from 'lucide-react';
 
 interface BreadcrumbsProps {
   currentView: string;
+  viewHistory: string[];
   onViewChange: (view: string) => void;
+  onGoBack: () => void;
   onToggleActivityFeed?: () => void;
 }
 
-export function Breadcrumbs({ currentView, onViewChange, onToggleActivityFeed }: BreadcrumbsProps) {
-  const getBreadcrumbs = () => {
-    switch (currentView) {
-      case 'dashboard':
-        return [];
-      case 'org':
-      case 'agents':
-        return [{ id: 'org', label: 'Agent Hierarchy' }];
-      case 'agent-builder':
-        return [
-          { id: 'org', label: 'Agent Hierarchy' },
-          { id: 'agent-builder', label: 'Agent Builder' },
-        ];
-      case 'workflows':
-        return [{ id: 'workflows', label: 'Workflows' }];
-      case 'governance':
-        return [{ id: 'governance', label: 'Governance & Risk' }];
-      case 'approvals':
-        return [{ id: 'approvals', label: 'Approval Queue' }];
-      case 'memory':
-        return [{ id: 'memory', label: 'Memory Center' }];
-      case 'automations':
-        return [{ id: 'automations', label: 'Automations' }];
-      case 'architecture':
-        return [{ id: 'architecture', label: 'System Architecture' }];
-      case 'settings':
-        return [{ id: 'settings', label: 'Settings' }];
-      default:
-        return [{ id: currentView, label: currentView.charAt(0).toUpperCase() + currentView.slice(1) }];
+export function Breadcrumbs({ currentView, viewHistory, onViewChange, onGoBack, onToggleActivityFeed }: BreadcrumbsProps) {
+  const getViewInfo = (viewId: string) => {
+    switch (viewId) {
+      case 'dashboard': return { icon: <Home className="w-4 h-4" />, label: 'Platform' };
+      case 'org': return { icon: <Network className="w-4 h-4" />, label: 'Organization' };
+      case 'agents': return { icon: <Network className="w-4 h-4" />, label: 'Agent Hierarchy' };
+      case 'agent-builder': return { icon: <Users className="w-4 h-4" />, label: 'Agent Builder' };
+      case 'workflows': return { icon: <Workflow className="w-4 h-4" />, label: 'Workflows' };
+      case 'architecture': return { icon: <Monitor className="w-4 h-4" />, label: 'System Architecture' };
+      case 'governance': return { icon: <Gavel className="w-4 h-4" />, label: 'Governance & Risk' };
+      case 'audit-logs': return { icon: <History className="w-4 h-4" />, label: 'Audit Logs' };
+      case 'memory': return { icon: <Database className="w-4 h-4" />, label: 'Memory Center' };
+      case 'approvals': return { icon: <CheckSquare className="w-4 h-4" />, label: 'Approval Queue' };
+      case 'automations': return { icon: <Workflow className="w-4 h-4" />, label: 'Automations' };
+      case 'integrations': return { icon: <Network className="w-4 h-4" />, label: 'Integrations' };
+      case 'evaluations': return { icon: <CheckSquare className="w-4 h-4" />, label: 'Evaluations' };
+      case 'settings': return { icon: <Settings className="w-4 h-4" />, label: 'Settings' };
+      default: return { icon: <Home className="w-4 h-4" />, label: viewId.charAt(0).toUpperCase() + viewId.slice(1) };
     }
   };
 
-  const crumbs = getBreadcrumbs();
+  const crumbs = viewHistory.map((viewId, index) => ({
+    id: `${viewId}-${index}`,
+    viewId,
+    ...getViewInfo(viewId)
+  }));
 
   return (
-    <div className="flex items-center h-14 px-8 border-b border-[var(--border-base)] bg-[var(--bg-base)]/80 backdrop-blur-md sticky top-0 z-40 shrink-0 font-sans">
-      <div className="flex items-center gap-1.5 text-sm font-medium text-[var(--text-muted)]">
-        <button 
-          onClick={() => onViewChange('dashboard')}
-          className="hover:text-[var(--text-base)] hover:bg-[var(--bg-surface)] p-1.5 rounded-md transition-colors flex items-center justify-center gap-2"
-        >
-          <Home className="w-4 h-4" />
-          <span className="hidden sm:inline">Platform</span>
-        </button>
+    <div className="flex items-center h-14 px-4 md:px-8 border-b border-[var(--border-base)] bg-[var(--bg-base)]/80 backdrop-blur-md sticky top-0 z-40 shrink-0 font-sans w-full">
+      <div className="flex items-center gap-1.5 text-sm font-medium text-[var(--text-muted)] min-w-0 flex-1 overflow-x-auto no-scrollbar pb-0.5">
+        {viewHistory.length > 1 && (
+          <button
+            onClick={onGoBack}
+            className="hover:text-[var(--text-base)] hover:bg-[var(--bg-surface)] p-1.5 rounded-md transition-colors flex items-center justify-center mr-1 sm:mr-2 shrink-0"
+            title="Go Back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        )}
         
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1;
           
           return (
-            <div key={crumb.id} className="flex items-center gap-1.5">
-              <ChevronRight className="w-4 h-4 text-[var(--text-tertiary)]" />
+            <div key={crumb.id} className="flex items-center gap-1.5 shrink-0">
+              {index > 0 && <ChevronRight className="w-4 h-4 text-[var(--text-tertiary)]" />}
               <button
-                onClick={() => onViewChange(crumb.id)}
+                onClick={() => onViewChange(crumb.viewId)}
                 disabled={isLast}
-                className={`px-2 py-1 rounded-md transition-colors ${
+                className={`px-2 py-1.5 rounded-md transition-colors whitespace-nowrap flex items-center gap-2 ${
                   isLast 
                     ? 'text-[var(--text-base)] cursor-default' 
                     : 'hover:text-[var(--text-base)] hover:bg-[var(--bg-surface)]'
                 }`}
               >
-                {crumb.label}
+                {crumb.icon}
+                <span className={index === 0 ? "hidden sm:inline" : ""}>{crumb.label}</span>
               </button>
             </div>
           );
         })}
       </div>
 
-      <div className="ml-auto flex items-center">
+      <div className="ml-2 sm:ml-auto flex items-center shrink-0">
         {onToggleActivityFeed && (
           <button
             onClick={onToggleActivityFeed}

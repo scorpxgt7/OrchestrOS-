@@ -161,7 +161,7 @@ export function ApprovalQueueView() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    key={task.id} 
+                    key={task.id || `task-${i}`} 
                     className={`bg-[var(--bg-surface)] border rounded-xl overflow-hidden ${isBlocked ? 'border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.05)]' : 'border-[var(--border-base)] shadow-sm'}`}
                   >
                     <div className={`px-6 py-3 border-b ${isBlocked ? 'bg-amber-500/10 border-amber-500/20' : 'bg-[var(--bg-base)] border-[var(--border-base)]'} flex items-center justify-between`}>

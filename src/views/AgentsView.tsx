@@ -659,7 +659,7 @@ export function AgentsView({ onViewChange }: { onViewChange?: (view: string) => 
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
                 onClick={() => setSelectedAgentId(agent.id)}
-                key={agent.id} 
+                key={agent.id || `agent-${i}`} 
                 className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group select-none flex flex-col justify-between h-[230px] ${
                   isSelected 
                     ? 'bg-blue-500/5 border-blue-500 shadow-lg shadow-blue-500/5' 

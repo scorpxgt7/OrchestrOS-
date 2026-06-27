@@ -273,7 +273,7 @@ export function GovernanceView() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.1 }}
-                key={policy.id} 
+                key={policy.id || `policy-${i}`} 
                 className="bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl p-4 flex items-center justify-between hover:border-[var(--text-secondary)]/30 transition-all"
               >
                 <div>
@@ -313,7 +313,7 @@ export function GovernanceView() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.1 }}
-                key={incident.id} 
+                key={incident.id || `incident-${i}`} 
                 className="bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl p-4 hover:border-rose-500/20 transition-all"
               >
                 <div className="flex justify-between items-start mb-2">
@@ -434,7 +434,7 @@ export function GovernanceView() {
                   return (
                     <motion.div
                       layout
-                      key={act.id}
+                      key={act.id || `act-${act.action}-${Date.now()}`}
                       initial={{ opacity: 0, y: -12, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, x: -50 }}

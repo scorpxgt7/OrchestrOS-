@@ -8,7 +8,8 @@ import {
   Settings,
   Activity,
   CheckCircle,
-  Workflow
+  Workflow,
+  FileText
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,6 +25,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { id: 'evaluations', label: 'Agent Performance', icon: Activity },
     { id: 'workflows', label: 'Workflows', icon: KanbanSquare },
     { id: 'governance', label: 'Governance & Risk', icon: ShieldAlert },
+    { id: 'audit-logs', label: 'Audit Logs', icon: FileText },
     { id: 'approvals', label: 'Approval Queue', icon: CheckCircle },
     { id: 'memory', label: 'Memory Center', icon: Database },
     { id: 'automations', label: 'Automations', icon: Workflow },

@@ -91,12 +91,12 @@ export function EvaluationsView() {
               <h3 className="text-sm font-bold text-[var(--text-primary)]">Agent Roster</h3>
             </div>
             <div className="divide-y divide-[var(--border-base)] max-h-[500px] overflow-y-auto">
-              {agents.map(agent => {
+              {agents.map((agent, i) => {
                 const agentPerf = evaluations[agent.id.toString()] || { completionRate: 85, accuracyScore: 90, costEfficiency: 80, policyAdherence: 95, overallScore: 88, trend: 'Stable', recentFeedback: [] };
                 const isSelected = selectedAgentId === agent.id.toString();
                 return (
                   <button
-                    key={agent.id}
+                    key={agent.id || `agent-${i}`}
                     onClick={() => setSelectedAgentId(agent.id.toString())}
                     className={`w-full text-left p-4 hover:bg-[var(--bg-base)] transition-colors flex items-center justify-between
                       ${isSelected ? 'bg-[var(--bg-base)] border-l-2 border-l-blue-500' : ''}`}

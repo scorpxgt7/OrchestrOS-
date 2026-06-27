@@ -22,6 +22,8 @@ export const departments = pgTable('departments', {
   id: serial('id').primaryKey(),
   organizationId: integer('organization_id').references(() => organizations.id).notNull(),
   name: text('name').notNull(),
+  description: text('description'),
+  region: text('region'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

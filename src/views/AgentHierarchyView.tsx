@@ -1090,9 +1090,9 @@ export function AgentHierarchyView({ onViewChange }: { onViewChange?: (view: str
                 className="absolute origin-top-left p-12 w-max min-w-full"
               >
                 <div className="relative pl-2 sm:pl-6 border-l border-zinc-800/40 space-y-6">
-                  {filteredNodes.map(rootNode => (
+                  {filteredNodes.map((rootNode, i) => (
                     <RenderNode 
-                      key={rootNode.id} 
+                      key={rootNode.id || `root-${i}`} 
                       node={rootNode} 
                       depth={0} 
                       expandedNodes={expandedNodes} 
@@ -1249,8 +1249,8 @@ export function AgentHierarchyView({ onViewChange }: { onViewChange?: (view: str
                     <option value="">No Manager (Root Level Node)</option>
                     {agents
                       .filter(a => a.id !== selectedAgent.id) // Cannot report to self
-                      .map(a => (
-                        <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
+                      .map((a, i) => (
+                        <option key={a.id || `opt-${i}`} value={a.id}>{a.name} ({a.role})</option>
                       ))}
                   </select>
                 </div>
@@ -1326,7 +1326,7 @@ export function AgentHierarchyView({ onViewChange }: { onViewChange?: (view: str
                     </div>
                   ) : (
                     <div className="divide-y divide-zinc-900/60 max-h-[180px] overflow-y-auto">
-                      {displayLogs.map((log: any) => {
+                      {displayLogs.map((log: any, i: number) => {
                         const date = new Date(log.timestamp);
                         const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                         
@@ -1336,7 +1336,7 @@ export function AgentHierarchyView({ onViewChange }: { onViewChange?: (view: str
                         const riskColor = isHighRisk ? 'text-red-400' : isMedRisk ? 'text-amber-400' : 'text-zinc-500';
 
                         return (
-                          <div key={log.id} className="p-3 hover:bg-zinc-900/40 transition-colors flex flex-col gap-1.5">
+                          <div key={log.id || `log-${i}`} className="p-3 hover:bg-zinc-900/40 transition-colors flex flex-col gap-1.5">
                             <div className="flex items-start justify-between gap-4">
                               <span className="text-zinc-200 font-semibold tracking-tight">{log.action}</span>
                               <span className="text-[10px] text-zinc-500 shrink-0 flex items-center gap-1">
@@ -1468,8 +1468,8 @@ export function AgentHierarchyView({ onViewChange }: { onViewChange?: (view: str
                   <option value="root" className="bg-zinc-950 text-zinc-200">No Supervisor (Root)</option>
                   {agents
                     .filter(a => !selectedNodeIds.includes(a.id)) // cycle prevention: cannot report to self or other selected nodes
-                    .map(a => (
-                      <option key={a.id} value={a.id} className="bg-zinc-950 text-zinc-200">
+                    .map((a, i) => (
+                      <option key={a.id || `opt2-${i}`} value={a.id} className="bg-zinc-950 text-zinc-200">
                         {a.name} ({a.role})
                       </option>
                     ))}
@@ -1711,7 +1711,7 @@ function RenderNode({
         <div className="pl-6 sm:pl-8 space-y-4 ml-3 sm:ml-4 relative">
           {node.children.map((childNode, index) => (
             <RenderNode 
-              key={childNode.id} 
+              key={childNode.id || `child-${index}`} 
               node={childNode} 
               depth={depth + 1} 
               expandedNodes={expandedNodes} 

@@ -6,6 +6,7 @@ import { AgentHierarchyView } from './views/AgentHierarchyView';
 import { WorkflowsView } from './views/WorkflowsView';
 import { ArchitectureView } from './views/ArchitectureView';
 import { GovernanceView } from './views/GovernanceView';
+import { AuditLogsView } from './views/AuditLogsView';
 import { OrganizationBuilderView } from './views/OrganizationBuilderView';
 import { AgentBuilderView } from './views/AgentBuilderView';
 import { MemoryView } from './views/MemoryView';
@@ -16,16 +17,32 @@ import { SettingsView } from './views/SettingsView';
 import { EvaluationsView } from './views/EvaluationsView';
 import { ResourceUsageMonitor } from './components/ResourceUsageMonitor';
 import { GlobalActivityFeed } from './components/GlobalActivityFeed';
+import { LockScreen } from './components/LockScreen';
+import { CommandPalette } from './components/CommandPalette';
+import { GuidedTour } from './components/GuidedTour';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchApi } from './lib/api';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
+  const [viewHistory, setViewHistory] = useState<string[]>(['dashboard']);
   const [theme, setTheme] = useState('theme-default');
   const [accentColor, setAccentColor] = useState('accent-blue');
   const [isNavigating, setIsNavigating] = useState(false);
   const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(open => !open);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     // Development initialization: creates default user, organization, and seeds data
@@ -51,10 +68,23 @@ export default function App() {
     initApp();
   }, []);
 
-  const handleViewChange = (view: string) => {
+  const handleViewChange = (view: string, isBackAction = false) => {
     if (view === currentView) return;
     setIsNavigating(true);
     setCurrentView(view);
+    
+    if (isBackAction) {
+      setViewHistory(prev => prev.slice(0, -1));
+    } else {
+      setViewHistory(prev => [...prev, view]);
+    }
+  };
+
+  const handleGoBack = () => {
+    if (viewHistory.length > 1) {
+      const prevView = viewHistory[viewHistory.length - 2];
+      handleViewChange(prevView, true);
+    }
   };
 
   useEffect(() => {
@@ -89,6 +119,8 @@ export default function App() {
         return <WorkflowsView />;
       case 'governance':
         return <GovernanceView />;
+      case 'audit-logs':
+        return <AuditLogsView />;
       case 'memory':
         return <MemoryView />;
       case 'approvals':
@@ -122,8 +154,10 @@ export default function App() {
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-[var(--bg-base)] to-[var(--bg-base)] pointer-events-none" />
         <div className="relative z-10 flex flex-col min-h-full">
           <Breadcrumbs 
-            currentView={currentView} 
-            onViewChange={handleViewChange} 
+            currentView={currentView}
+            viewHistory={viewHistory}
+            onViewChange={handleViewChange}
+            onGoBack={handleGoBack}
             onToggleActivityFeed={() => setIsActivityFeedOpen(true)}
           />
           <div className="flex-1 relative">
@@ -177,6 +211,13 @@ export default function App() {
         </div>
       </main>
       <GlobalActivityFeed isOpen={isActivityFeedOpen} onClose={() => setIsActivityFeedOpen(false)} />
+      <LockScreen />
+      <GuidedTour currentView={currentView} />
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={handleViewChange}
+      />
     </div>
   );
 }

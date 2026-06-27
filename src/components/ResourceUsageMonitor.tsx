@@ -295,13 +295,13 @@ export function ResourceUsageMonitor() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
-                  {agents.map(agent => {
+                  {agents.map((agent, i) => {
                     const isHalted = agent.status === 'Halted';
                     const isBusy = agent.status === 'Busy';
                     
                     return (
                       <div 
-                        key={agent.id}
+                        key={agent.id || `agent-${i}`}
                         className={`p-3 rounded-xl border transition-all ${
                           isHalted 
                             ? 'bg-zinc-950/40 border-zinc-900 opacity-60' 

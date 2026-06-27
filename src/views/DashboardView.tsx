@@ -25,16 +25,40 @@ export function DashboardView() {
   ]);
   
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+
+  const [syncEventsData] = useState(
+    Array.from({ length: 24 }, (_, i) => ({
+      hour: `-${24 - i}h`,
+      events: Math.floor(Math.random() * 50) + 10,
+    }))
+  );
 
   useEffect(() => {
-    fetchApi('/agents').then(setAgents);
-    fetchApi('/tasks').then(setTasks);
-    fetchApi('/audit').then(setAuditLogs);
-    fetchApi('/dashboard/metrics').then(data => {
-      setThroughputData(data.throughputData);
-      setRiskData(data.riskData);
-      setCostBurnData(data.costBurnData);
-    });
+    const loadData = () => {
+      fetchApi('/agents').then(data => {
+        setAgents(data);
+        setLastSyncTime(new Date());
+      });
+      fetchApi('/tasks').then(setTasks);
+      fetchApi('/audit').then(setAuditLogs);
+      fetchApi('/dashboard/metrics').then(data => {
+        setThroughputData(data.throughputData);
+        setRiskData(data.riskData);
+        setCostBurnData(data.costBurnData);
+      });
+    };
+
+    loadData();
+
+    const interval = setInterval(() => {
+      fetchApi('/agents').then(data => {
+        setAgents(data);
+        setLastSyncTime(new Date());
+      });
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const activeAgents = agents.filter(a => a.status === 'Active' || a.status === 'Busy').length;
@@ -162,11 +186,23 @@ export function DashboardView() {
           <p className="text-[var(--text-muted)] text-sm">System-wide overview of autonomous operations and agent health.</p>
         </div>
         
-        <div className="flex items-center gap-4 bg-[var(--bg-surface)] border border-[var(--border-base)] px-4 py-2.5 rounded-xl shadow-sm">
-          <div className="flex flex-col items-end">
-            <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-widest mb-0.5">System Pulse</span>
-            <span className="text-[10px] font-medium text-emerald-400 font-mono">NOMINAL • 98.4%</span>
+        <div className="flex items-center gap-6">
+          <div className="hidden md:flex flex-col border border-[var(--border-base)] bg-[var(--bg-surface)] px-4 py-2 rounded-xl shadow-sm h-14 w-32">
+             <div className="text-[9px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">Sync Frequency (24h)</div>
+             <div className="flex-1 w-full min-h-0">
+               <ResponsiveContainer width="100%" height="100%">
+                 <LineChart data={syncEventsData}>
+                   <Line type="monotone" dataKey="events" stroke="#3b82f6" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                 </LineChart>
+               </ResponsiveContainer>
+             </div>
           </div>
+          
+          <div className="flex items-center gap-4 bg-[var(--bg-surface)] border border-[var(--border-base)] px-4 py-2.5 rounded-xl shadow-sm h-14">
+            <div className="flex flex-col items-end">
+              <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-widest mb-0.5">System Pulse</span>
+              <span className="text-[10px] font-medium text-emerald-400 font-mono">NOMINAL • 98.4%</span>
+            </div>
           <div className="relative flex items-center justify-center w-8 h-8">
             <motion.div 
               animate={{ 
@@ -196,6 +232,7 @@ export function DashboardView() {
             <div className="relative z-10 w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
           </div>
         </div>
+        </div>
       </div>
 
       {/* Top Stats */}
@@ -214,11 +251,75 @@ export function DashboardView() {
             className="bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl p-5 flex items-center justify-between shadow-sm"
           >
             <div>
-              <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-1">{stat.label}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider">{stat.label}</p>
+                {stat.label === 'Active Agents' && (
+                  <div className="relative inline-block group">
+                    <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-blue-400 bg-blue-500/15 px-1.5 py-0.5 rounded border border-blue-500/20 cursor-help">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-400"></span>
+                      </span>
+                      BRAIN-LINKED
+                    </span>
+
+                    {/* Synchronized with Main Brain Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 ease-out origin-bottom z-50">
+                      <div className="bg-zinc-950/95 border border-zinc-800 text-[10px] text-zinc-300 rounded-lg p-2.5 shadow-xl font-mono relative">
+                        <div className="text-blue-400 font-bold mb-1 flex items-center gap-1.5">
+                          <BrainCircuit className="w-3.5 h-3.5 animate-pulse" />
+                          SYNC SUCCESSFUL
+                        </div>
+                        <div className="text-zinc-400 text-[9px]">Last Main Brain Sync:</div>
+                        <div className="text-zinc-100 font-semibold mt-0.5 text-[11px] tracking-tight">
+                          {lastSyncTime ? lastSyncTime.toLocaleString() : 'Syncing...'}
+                        </div>
+                        <div className="text-[8px] text-zinc-500 mt-1 flex justify-between border-t border-zinc-900 pt-1">
+                          <span>LATENCY: 12ms</span>
+                          <span>STABILITY: 100%</span>
+                        </div>
+                        {/* Triangle arrow */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-zinc-950" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
               <h3 className="text-2xl font-bold text-[var(--text-base)]">{stat.value}</h3>
             </div>
-            <div className={`p-3 rounded-lg ${stat.bg}`}>
-              <stat.icon className={`w-6 h-6 ${stat.color}`} />
+            <div className="relative">
+              {stat.label === 'Active Agents' && (
+                <>
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.35, 1],
+                      opacity: [0.35, 0.08, 0.35],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="absolute -inset-2 bg-blue-500/20 rounded-xl blur-md"
+                  />
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.15, 1],
+                      opacity: [0.55, 0.18, 0.55],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: 0.5,
+                    }}
+                    className="absolute -inset-1 bg-blue-500/30 rounded-lg blur-[3px]"
+                  />
+                </>
+              )}
+              <div className={`p-3 rounded-lg relative z-10 ${stat.bg}`}>
+                <stat.icon className={`w-6 h-6 ${stat.color}`} />
+              </div>
             </div>
           </motion.div>
         ))}
@@ -241,7 +342,7 @@ export function DashboardView() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.1 + i * 0.05 }}
-                key={agent.id}
+                key={agent.id || `agent-${i}`}
                 className="bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl p-4 flex flex-col justify-between shadow-sm"
               >
                 <div>
@@ -333,7 +434,7 @@ export function DashboardView() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
-                key={log.id} 
+                key={`${log.id || 'log'}-${i}`} 
                 className="flex gap-4 p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-base)]"
               >
                 <div className="mt-0.5">

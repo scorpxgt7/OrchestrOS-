@@ -624,8 +624,8 @@ export function AutomationView() {
                      </div>
                    ) : (
                      <div className="space-y-2">
-                       {automations.map(auto => (
-                         <div key={auto.id} className={`p-4 bg-[var(--bg-base)] border border-[var(--border-base)] rounded-xl flex items-center justify-between text-sm hover:border-[var(--text-tertiary)] cursor-pointer transition-colors ${auto.active ? 'shadow-sm relative overflow-hidden ring-1 ring-black/5' : 'opacity-60'}`}>
+                       {automations.map((auto, i) => (
+                         <div key={auto.id || `auto-${i}`} className={`p-4 bg-[var(--bg-base)] border border-[var(--border-base)] rounded-xl flex items-center justify-between text-sm hover:border-[var(--text-tertiary)] cursor-pointer transition-colors ${auto.active ? 'shadow-sm relative overflow-hidden ring-1 ring-black/5' : 'opacity-60'}`}>
                            {auto.active && <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 to-emerald-600"></div>}
                            <span className={`text-[var(--text-secondary)] font-medium ${auto.active ? 'pl-2 text-[var(--text-primary)]' : ''}`}>{auto.title}</span>
                          </div>

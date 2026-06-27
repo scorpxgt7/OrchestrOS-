@@ -114,7 +114,7 @@ export function WorkflowsView() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.1 }}
-                      key={task.id} 
+                      key={task.id || `task-${i}`} 
                       className="bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg p-4 shadow-sm hover:border-[var(--border-base)] cursor-pointer transition-colors"
                     >
                       <div className="flex items-start justify-between mb-2">
