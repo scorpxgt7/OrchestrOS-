@@ -9,20 +9,18 @@ export async function getOrCreateUser(uid: string, email: string) {
   });
 
   if (!user) {
-    // Check if any organization exists, otherwise create a default one
-    let org: any = await db.query.organizations.findFirst();
-    if (!org) {
-      const orgResult = await db.insert(organizations).values({
-        name: 'Default Organization',
-      }).returning();
-      org = orgResult[0];
+    // Create a new organization for this user to ensure multi-tenancy
+    const orgName = email ? `${email.split('@')[0]}'s Organization` : 'My Organization';
+    const orgResult = await db.insert(organizations).values({
+      name: orgName,
+    }).returning();
+    const org = orgResult[0];
 
-      // Create a default department
-      await db.insert(departments).values({
-        organizationId: org.id as number,
-        name: 'General Engineering',
-      });
-    }
+    // Create a default department
+    await db.insert(departments).values({
+      organizationId: org.id as number,
+      name: 'General Engineering',
+    });
 
     // Create user
     const result = await db.insert(users)

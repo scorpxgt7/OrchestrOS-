@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { fetchApi } from '../lib/api';
-import { AlertCircle, Clock, ShieldAlert, Sparkles, Plus } from 'lucide-react';
+import { AlertCircle, Clock, ShieldAlert, Sparkles, Plus, PlayCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { auditService } from '../services/auditService';
+import { useToast } from '../contexts/ToastContext';
 
 interface Agent {
   id: number;
@@ -23,10 +24,13 @@ interface Task {
 const COLUMNS = ['Backlog', 'In Progress', 'Reviewing', 'Awaiting Approval'];
 
 export function WorkflowsView() {
+  const { showToast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [newGoal, setNewGoal] = useState('');
   const [isPlanning, setIsPlanning] = useState(false);
+  const [executeContext, setExecuteContext] = useState('');
+  const [isExecuting, setIsExecuting] = useState(false);
 
   const loadData = () => {
     fetchApi('/tasks').then(setTasks);
@@ -48,10 +52,38 @@ export function WorkflowsView() {
       });
       setNewGoal('');
       loadData();
+      showToast('Goal decomposed successfully.', 'success');
     } catch (err) {
       console.error(err);
+      showToast('Failed to plan goal.', 'error');
     } finally {
       setIsPlanning(false);
+    }
+  };
+
+  const handleExecuteContext = async () => {
+    if (!executeContext.trim()) return;
+    setIsExecuting(true);
+    try {
+      const result = await fetchApi('/brain/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: executeContext })
+      });
+      
+      if (result.invokedFunction) {
+        showToast(`Main Brain invoked: ${result.invokedFunction}`, 'success');
+      } else {
+        showToast('Main Brain decided no action was necessary.', 'info');
+      }
+      
+      setExecuteContext('');
+      loadData();
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to execute context.', 'error');
+    } finally {
+      setIsExecuting(false);
     }
   };
 
@@ -70,26 +102,49 @@ export function WorkflowsView() {
 
   return (
     <div className="p-8 h-full flex flex-col font-sans pb-24">
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="mb-8 flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-base)] tracking-tight mb-1">Active Workflows</h2>
           <p className="text-[var(--text-muted)] text-sm">Kanban view of autonomous tasks, escalations, and human approval queues.</p>
         </div>
-        <div className="flex gap-2 items-center bg-[var(--bg-surface)] p-2 rounded-lg border border-[var(--border-base)] w-full md:w-auto">
-          <input 
-            type="text"
-            value={newGoal}
-            onChange={e => setNewGoal(e.target.value)}
-            placeholder="Assign a complex goal to the Main Brain..."
-            className="bg-transparent border-none focus:outline-none text-sm px-2 w-full md:w-64"
-          />
-          <button 
-            onClick={handlePlanGoal}
-            disabled={!newGoal.trim() || isPlanning}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white p-2 rounded-md transition-colors"
-          >
-            {isPlanning ? <Sparkles className="w-4 h-4 animate-pulse" /> : <Plus className="w-4 h-4" />}
-          </button>
+        
+        <div className="flex flex-col gap-3 w-full md:w-auto">
+          {/* Plan Goal Input */}
+          <div className="flex gap-2 items-center bg-[var(--bg-surface)] p-2 rounded-lg border border-[var(--border-base)] w-full">
+            <input 
+              type="text"
+              value={newGoal}
+              onChange={e => setNewGoal(e.target.value)}
+              placeholder="Assign a complex goal to the Main Brain..."
+              className="bg-transparent border-none focus:outline-none text-sm px-2 w-full md:w-64"
+            />
+            <button 
+              onClick={handlePlanGoal}
+              disabled={!newGoal.trim() || isPlanning}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white p-2 rounded-md transition-colors whitespace-nowrap"
+            >
+              {isPlanning ? <Sparkles className="w-4 h-4 animate-pulse" /> : <Plus className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Context Execution Simulator */}
+          <div className="flex gap-2 items-center bg-[var(--bg-surface)] p-2 rounded-lg border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.1)] w-full relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-colors pointer-events-none" />
+            <input 
+              type="text"
+              value={executeContext}
+              onChange={e => setExecuteContext(e.target.value)}
+              placeholder="Simulate live context (e.g., 'Agent 007 is deleting prod')..."
+              className="bg-transparent border-none focus:outline-none text-sm px-2 w-full md:w-64 relative z-10 placeholder-purple-500/40"
+            />
+            <button 
+              onClick={handleExecuteContext}
+              disabled={!executeContext.trim() || isExecuting}
+              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white p-2 rounded-md transition-colors relative z-10 whitespace-nowrap flex items-center gap-1.5"
+            >
+              {isExecuting ? <Sparkles className="w-4 h-4 animate-pulse" /> : <PlayCircle className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </div>
 

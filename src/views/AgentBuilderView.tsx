@@ -19,12 +19,15 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
   const [primaryModel, setPrimaryModel] = useState('Gemini 1.5 Pro (Remote)');
   
   const [departments, setDepartments] = useState<any[]>([]);
+  const [availableAgents, setAvailableAgents] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [reportingManager, setReportingManager] = useState<string>('');
+  const [failureBehavior, setFailureBehavior] = useState('halt_and_escalate');
 
   useEffect(() => {
-    // We might not have a departments API yet, but let's assume we can fetch them or just hardcode some for MVP.
-    // For MVP we can just not pass departmentId or let the backend handle it if null.
-    // Let's actually fetch agents or just set departmentId null for now.
+    fetchApi('/departments').then(setDepartments).catch(() => setDepartments([]));
+    fetchApi('/agents').then(setAvailableAgents).catch(() => setAvailableAgents([]));
   }, []);
 
   const autonomyLevels = [
@@ -56,7 +59,11 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
           mission,
           autonomyLevel,
           memoryAccess: selectedMemory.join(', '),
-          // other config fields can be added here
+          departmentId: departmentId || undefined,
+          toolPermissions: selectedTools,
+          reportingManager: reportingManager ? parseInt(reportingManager) : undefined,
+          failureBehavior,
+          riskLimits: { maxRiskScore: autonomyLevel > 3 ? 80 : 50 }
         })
       });
 
@@ -111,12 +118,15 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Assigned Department</label>
-                <select className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50">
-                  <option>Marketing</option>
-                  <option>Engineering</option>
-                  <option>Finance</option>
-                  <option>Operations</option>
-                  <option>Security & Compliance</option>
+                <select 
+                  value={departmentId || ''}
+                  onChange={e => setDepartmentId(e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50"
+                >
+                  <option value="">None (Global)</option>
+                  {departments.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -195,6 +205,62 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
                   </div>
                 </div>
               ))}
+            </div>
+            
+            <div className="border-t border-[var(--border-base)] pt-6 mt-6">
+              <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                <Network className="w-5 h-5 text-indigo-400" />
+                Governance & Constraints
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Reporting Manager</label>
+                  <select 
+                    value={reportingManager}
+                    onChange={e => setReportingManager(e.target.value)}
+                    className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50"
+                  >
+                    <option value="">None (Top Level)</option>
+                    {availableAgents.map(a => (
+                      <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Failure Behavior</label>
+                  <select 
+                    value={failureBehavior}
+                    onChange={e => setFailureBehavior(e.target.value)}
+                    className="w-full bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50"
+                  >
+                    <option value="halt_and_escalate">Halt & Escalate to Human</option>
+                    <option value="retry_with_lower_temp">Retry with Lower Temp</option>
+                    <option value="fallback_to_manager">Fallback to Manager Agent</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-4">
+                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Allowed Tools</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Web Search', 'Database Write', 'Send Email', 'Execute Code', 'Slack Notify', 'Approve Workflows'].map(tool => (
+                    <label key={tool} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--bg-base)] border border-[var(--border-base)] cursor-pointer hover:bg-[#27272a]/50">
+                      <input 
+                        type="checkbox"
+                        checked={selectedTools.includes(tool)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedTools([...selectedTools, tool]);
+                          else setSelectedTools(selectedTools.filter(t => t !== tool));
+                        }}
+                        className="rounded border-zinc-600 bg-[var(--bg-base)] text-blue-500 focus:ring-blue-500/50" 
+                      />
+                      <span className="text-sm text-[var(--text-secondary)]">{tool}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

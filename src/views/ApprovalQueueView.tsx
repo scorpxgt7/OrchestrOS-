@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, X, Edit3, ShieldAlert, Clock, Inbox, Sparkles, Filter, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Check, X, Edit3, ShieldAlert, Clock, Inbox, Sparkles, Filter, CheckCircle2, UserX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect } from 'react';
 import { fetchApi } from '../lib/api';
@@ -19,17 +19,29 @@ interface Task {
 interface Agent {
   id: number;
   name: string;
+  department: string;
+}
+
+interface ApprovalRequest {
+  id: number;
+  resourceType: string;
+  resourceId: string;
+  action: string;
+  reason: string;
+  status: string;
 }
 
 export function ApprovalQueueView({ onViewChange }: { onViewChange?: (view: string) => void }) {
   const { showToast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [filterDept, setFilterDept] = useState<string>('all');
 
   const loadData = () => {
     fetchApi('/tasks').then(setTasks);
     fetchApi('/agents').then(setAgents);
+    fetchApi('/approvals').then(setApprovals).catch(() => setApprovals([]));
   };
 
   useEffect(() => {
@@ -41,7 +53,9 @@ export function ApprovalQueueView({ onViewChange }: { onViewChange?: (view: stri
     ? allHaltedTasks 
     : allHaltedTasks.filter(t => t.department === filterDept);
 
-  const handleAction = async (taskId: number, action: 'approve' | 'deny', agentId: number) => {
+  const pendingApprovals = approvals.filter(a => a.status === 'pending');
+
+  const handleTaskAction = async (taskId: number, action: 'approve' | 'deny', agentId: number) => {
     try {
       const status = action === 'approve' ? 'In Progress' : 'Backlog';
       await fetchApi(`/tasks/${taskId}`, {
@@ -61,6 +75,19 @@ export function ApprovalQueueView({ onViewChange }: { onViewChange?: (view: stri
       loadData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleApprovalAction = async (approvalId: number, action: 'approve' | 'deny') => {
+    try {
+      await fetchApi(`/approvals/${approvalId}/${action}`, {
+        method: 'POST'
+      });
+      showToast(`Request ${action === 'approve' ? 'approved' : 'denied'} successfully.`, 'success');
+      loadData();
+    } catch (error) {
+      console.error(error);
+      showToast(`Failed to ${action} request.`, 'error');
     }
   };
 
@@ -91,7 +118,7 @@ export function ApprovalQueueView({ onViewChange }: { onViewChange?: (view: stri
 
       <div className="space-y-6">
         <AnimatePresence mode="wait">
-          {haltedTasks.length === 0 ? (
+          {haltedTasks.length === 0 && pendingApprovals.length === 0 ? (
             <motion.div 
               key="empty"
               initial={{ opacity: 0, y: 10 }}
@@ -156,6 +183,73 @@ export function ApprovalQueueView({ onViewChange }: { onViewChange?: (view: stri
             </motion.div>
           ) : (
             <motion.div key="list" className="space-y-6">
+              {pendingApprovals.map((req, i) => {
+                const isAgentResumption = req.action === 'resume_agent';
+                let relatedAgent = agents.find(a => a.id === parseInt(req.resourceId));
+
+                return (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    key={`approval-${req.id}`} 
+                    className="bg-[var(--bg-surface)] border border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.05)] rounded-xl overflow-hidden"
+                  >
+                    <div className="px-6 py-3 border-b bg-rose-500/10 border-rose-500/20 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <ShieldAlert className="w-4 h-4 text-rose-400" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-rose-400">
+                          Overwatch Intervention Required
+                        </span>
+                      </div>
+                      <div className="text-xs text-[var(--text-tertiary)] font-mono">Status: <span className="text-rose-400 font-bold uppercase">Paused</span></div>
+                    </div>
+                    
+                    <div className="p-6">
+                      <div className="flex justify-between items-start mb-6">
+                        <div>
+                          <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">
+                            {isAgentResumption ? `Review Agent Suspension: ${relatedAgent?.name || req.resourceId}` : req.action}
+                          </h3>
+                          <div className="flex items-center gap-3 text-sm text-[var(--text-muted)] border border-[var(--border-base)] bg-[var(--bg-base)] px-3 py-1.5 rounded-lg inline-flex">
+                            <UserX className="w-4 h-4 text-rose-400" />
+                            <span className="font-medium text-rose-400">{relatedAgent?.name || 'Unknown Agent'}</span>
+                            <span className="text-[var(--border-base)]">•</span>
+                            <span>{relatedAgent?.department || 'Unknown Dept'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-[var(--bg-base)] border border-[var(--border-base)] rounded-lg p-4 mb-6">
+                        <h4 className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-widest mb-3">Intervention Reason</h4>
+                        <pre className="text-sm text-[var(--text-secondary)] font-mono whitespace-pre-wrap">
+                          {req.reason}
+                        </pre>
+                      </div>
+
+                      <div className="flex gap-3 pt-2">
+                        <button 
+                          type="button" 
+                          onClick={() => handleApprovalAction(req.id, 'approve')}
+                          className="flex-1 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                        >
+                          <Check className="w-4 h-4" />
+                          Approve Resumption
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => handleApprovalAction(req.id, 'deny')}
+                          className="flex-1 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/20 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                          Deny & Keep Suspended
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+
               {haltedTasks.map((task, i) => {
                 const assignee = agents.find(a => a.id === task.assignedAgentId);
                 const isBlocked = task.status === 'Blocked';

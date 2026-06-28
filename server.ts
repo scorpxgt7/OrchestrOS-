@@ -18,6 +18,8 @@ import dashboardRouter from './src/api/routes/dashboard.ts';
 import organizationsRouter from './src/api/routes/organizations.ts';
 import evaluationsRouter from './src/api/routes/evaluations.ts';
 import integrationsRouter from './src/api/routes/integrations.ts';
+import overwatchRouter from './src/api/routes/overwatch.ts';
+import approvalsRouter from './src/api/routes/approvals.ts';
 
 async function startServer() {
   const app = express();
@@ -58,6 +60,8 @@ async function startServer() {
   app.use('/api/organizations', organizationsRouter);
   app.use('/api/evaluations', evaluationsRouter);
   app.use('/api/integrations', integrationsRouter);
+  app.use('/api/overwatch', overwatchRouter);
+  app.use('/api/approvals', approvalsRouter);
   app.use('/api/seed', seedRouter);
   app.use('/api/dev', devRouter);
 

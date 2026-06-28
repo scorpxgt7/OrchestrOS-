@@ -15,14 +15,18 @@ import { AutomationView } from './views/AutomationView';
 import { IntegrationsView } from './views/IntegrationsView';
 import { SettingsView } from './views/SettingsView';
 import { EvaluationsView } from './views/EvaluationsView';
+import { OverwatchView } from './views/OverwatchView';
 import { ResourceUsageMonitor } from './components/ResourceUsageMonitor';
 import { GlobalActivityFeed } from './components/GlobalActivityFeed';
 import { LockScreen } from './components/LockScreen';
 import { CommandPalette } from './components/CommandPalette';
 import { GuidedTour } from './components/GuidedTour';
 import { NotificationCenter } from './components/NotificationCenter';
+import { LoginView } from './views/LoginView';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchApi } from './lib/api';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './lib/firebase';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -34,6 +38,16 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user);
+      setAuthChecking(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -47,13 +61,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    
     // Development initialization: creates default user, organization, and seeds data
     const initApp = async () => {
       try {
-        const initRes = await fetch('/api/dev/init', { method: 'POST' });
-        console.log('init status:', initRes.status);
-        const seedRes = await fetchApi('/seed', { method: 'POST' });
-        console.log('seed res:', seedRes);
+        await fetchApi('/auth/sync', { method: 'POST' });
+        await fetchApi('/seed', { method: 'POST' });
         
         // Fetch organization settings to apply theme and accent color globally on load
         const org = await fetchApi('/organizations/current');
@@ -68,7 +82,7 @@ export default function App() {
       }
     };
     initApp();
-  }, []);
+  }, [isAuthenticated]);
 
   const handleViewChange = (view: string, isBackAction = false) => {
     if (view === currentView) return;
@@ -133,6 +147,8 @@ export default function App() {
         return <IntegrationsView />;
       case 'evaluations':
         return <EvaluationsView />;
+      case 'overwatch':
+        return <OverwatchView />;
       case 'settings':
         return <SettingsView theme={theme} setTheme={setTheme} accentColor={accentColor} setAccentColor={setAccentColor} />;
       case 'architecture':
@@ -148,6 +164,21 @@ export default function App() {
         );
     }
   };
+
+  if (authChecking) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[var(--bg-base)] text-[var(--text-tertiary)]">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm">Verifying Secure Context...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginView onSuccess={() => {}} />;
+  }
 
   return (
     <div className={`flex h-screen bg-[var(--bg-base)] text-[var(--text-base)] overflow-hidden font-sans selection:bg-blue-500/30 ${theme} ${accentColor}`}>

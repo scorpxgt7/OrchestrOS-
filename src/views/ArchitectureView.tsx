@@ -1,79 +1,243 @@
+import React, { useEffect, useRef, useState } from 'react';
+import * as d3 from 'd3';
+import { fetchApi } from '../lib/api';
+import { useToast } from '../contexts/ToastContext';
+import { motion, AnimatePresence } from 'motion/react';
+
+interface Agent {
+  id: number;
+  name: string;
+  role: string;
+  reportingManager: number | null;
+  status: string;
+}
+
 export function ArchitectureView() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const { showToast } = useToast();
+
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [links, setLinks] = useState<any[]>([]);
+  const simulationRef = useRef<d3.Simulation<any, any> | null>(null);
+
+  const [draggedNodeId, setDraggedNodeId] = useState<number | null>(null);
+  const [targetNodeId, setTargetNodeId] = useState<number | null>(null);
+  const [transform, setTransform] = useState(d3.zoomIdentity);
+
+  const loadAgents = async () => {
+    try {
+      const data = await fetchApi('/agents');
+      setAgents(data);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to load agents');
+    }
+  };
+
+  useEffect(() => {
+    loadAgents();
+  }, []);
+
+  useEffect(() => {
+    if (!agents.length || !containerRef.current) return;
+
+    const width = containerRef.current.clientWidth;
+    const height = containerRef.current.clientHeight;
+
+    const newNodes = agents.map(d => {
+      const existingNode = nodes.find(n => n.id === d.id);
+      return {
+        ...d,
+        x: existingNode ? existingNode.x : width / 2 + (Math.random() - 0.5) * 100,
+        y: existingNode ? existingNode.y : height / 2 + (Math.random() - 0.5) * 100,
+        vx: existingNode?.vx || 0,
+        vy: existingNode?.vy || 0,
+        fx: existingNode?.fx,
+        fy: existingNode?.fy
+      };
+    });
+
+    const newLinks = agents
+      .filter(d => d.reportingManager !== null)
+      .map(d => ({
+        source: newNodes.find(n => n.id === d.reportingManager) || newNodes[0],
+        target: newNodes.find(n => n.id === d.id)!
+      }))
+      .filter(l => l.source && l.target);
+
+    const simulation = d3.forceSimulation(newNodes)
+      .force("link", d3.forceLink(newLinks).id((d: any) => d.id).distance(180))
+      .force("charge", d3.forceManyBody().strength(-600))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("collide", d3.forceCollide().radius(70));
+
+    simulation.on("tick", () => {
+      setNodes([...newNodes]);
+      setLinks([...newLinks]);
+    });
+
+    simulationRef.current = simulation;
+
+    return () => {
+      simulation.stop();
+    };
+  }, [agents]);
+
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = d3.select(svgRef.current);
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 4])
+      .on("zoom", (event) => {
+        setTransform(event.transform);
+      });
+    svg.call(zoom);
+  }, []);
+
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-12 pb-24 text-[var(--text-secondary)] font-sans">
-      <div className="border-b border-[var(--border-base)] pb-8">
-        <h2 className="text-3xl font-bold text-[var(--text-base)] tracking-tight mb-4">OrchestrOS Product Design</h2>
-        <p className="text-lg text-[var(--text-muted)] leading-relaxed text-balance">
-          An Agentic Governance Orchestrator OS: a full-stack autonomous operating system for building, managing, monitoring, and improving an AI-powered organization.
-        </p>
+    <div className="flex flex-col h-full bg-[var(--bg-base)]">
+      <div className="p-6 border-b border-[var(--border-base)] flex flex-col md:flex-row gap-4 items-start md:items-center justify-between z-10 bg-[var(--bg-base)]">
+        <div>
+          <h2 className="text-2xl font-bold text-[var(--text-base)]">Architecture Canvas</h2>
+          <p className="text-sm text-[var(--text-muted)] mt-1">Interactive graph of your organizational swarm. Drag an agent onto another to change the reporting structure.</p>
+        </div>
+        <div className="flex gap-4">
+           <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+              <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span> Active
+           </div>
+           <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+              <span className="w-3 h-3 rounded-full bg-slate-500 inline-block"></span> Inactive
+           </div>
+        </div>
       </div>
+      <div className="flex-1 relative overflow-hidden" ref={containerRef}>
+        <svg 
+          ref={svgRef} 
+          className="w-full h-full absolute inset-0 cursor-grab active:cursor-grabbing"
+          style={{ background: 'var(--bg-surface)' }}
+        >
+          <defs>
+            <marker
+              id="arrowhead"
+              viewBox="-0 -5 10 10"
+              refX="35"
+              refY="0"
+              orient="auto"
+              markerWidth="8"
+              markerHeight="8"
+            >
+              <path d="M 0,-5 L 10 ,0 L 0,5" fill="#64748b" style={{ stroke: "none" }} />
+            </marker>
+          </defs>
+          <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
+            <g className="links">
+              {links.map((link, i) => (
+                <line
+                  key={`link-${i}`}
+                  x1={link.source.x}
+                  y1={link.source.y}
+                  x2={link.target.x}
+                  y2={link.target.y}
+                  stroke="#64748b"
+                  strokeOpacity={0.6}
+                  strokeWidth={2}
+                  markerEnd="url(#arrowhead)"
+                />
+              ))}
+            </g>
+            <g className="nodes">
+              <AnimatePresence>
+                {nodes.map(node => (
+                  <motion.g
+                    key={node.id}
+                    transform={`translate(${node.x || 0}, ${node.y || 0})`}
+                    animate={{
+                      scale: draggedNodeId === node.id ? 1.15 : targetNodeId === node.id ? 1.25 : 1,
+                    }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    onPanStart={(e, info) => {
+                      setDraggedNodeId(node.id);
+                      if (simulationRef.current) simulationRef.current.alphaTarget(0.3).restart();
+                      node.fx = node.x;
+                      node.fy = node.y;
+                    }}
+                    onPan={(e, info) => {
+                      node.fx = node.fx + info.delta.x / transform.k;
+                      node.fy = node.fy + info.delta.y / transform.k;
+                      
+                      const hoveredNode = nodes.find((n: any) => 
+                        n.id !== node.id && 
+                        Math.hypot(n.x - node.fx, n.y - node.fy) < 50
+                      );
+                      setTargetNodeId(hoveredNode ? hoveredNode.id : null);
+                    }}
+                    onPanEnd={async (e, info) => {
+                      node.fx = null;
+                      node.fy = null;
+                      if (simulationRef.current) simulationRef.current.alphaTarget(0);
 
-      <section className="space-y-4">
-        <h3 className="text-xl font-bold text-blue-400 tracking-tight">1. Core Architecture</h3>
-        <p className="text-[var(--text-muted)] leading-relaxed">
-          The OrchestrOS architecture combines traditional SaaS organizational tools (like Monday.com) with an autonomous agentic backbone. The system is split into three primary layers:
-        </p>
-        <ul className="list-disc pl-5 space-y-2 text-sm text-[var(--text-secondary)] bg-[var(--bg-surface)] p-6 rounded-xl border border-[var(--border-base)]">
-          <li><strong className="text-[var(--text-primary)]">The Interface Layer:</strong> Command Center, Visual Builders, Memory Maps, and Approval Queues. This is where human executives govern the system.</li>
-          <li><strong className="text-[var(--text-primary)]">The Intelligence Core (Main Brain & Overwatch):</strong> Handles high-level routing, cost vs. latency triage, policy enforcement, and continuous learning from outcomes.</li>
-          <li><strong className="text-[var(--text-primary)]">The Execution Swarm:</strong> A dynamic hierarchy of Executive, Departmental, and Specialist agents (incorporating both local LLMs for cheap tasks and remote models for complex reasoning).</li>
-        </ul>
-      </section>
-
-      <section className="space-y-4">
-        <h3 className="text-xl font-bold text-blue-400 tracking-tight">2. The Main Brain & Overwatch</h3>
-        <div className="grid md:grid-cols-2 gap-6 mt-4">
-          <div className="bg-purple-500/10 border border-purple-500/20 p-5 rounded-xl">
-            <h4 className="font-bold text-purple-300 mb-2">Main Brain</h4>
-            <p className="text-sm text-purple-200/80 leading-relaxed">
-              Acts as the OS kernel. It takes high-level user goals and fragments them into organizational structures. It handles agent provisioning, macro-memory management, and inter-departmental task routing.
-            </p>
-          </div>
-          <div className="bg-rose-500/10 border border-rose-500/20 p-5 rounded-xl">
-            <h4 className="font-bold text-rose-300 mb-2">Overwatch</h4>
-            <p className="text-sm text-rose-200/80 leading-relaxed">
-              The immune system. Constantly monitors workflows for policy violations, hallucinations, stalled tasks, and cost overruns. Automatically halts risky actions and escalates directly to human operators via the Approval Queue.
-            </p>
-          </div>
-        </div>
-      </section>
-
-       <section className="space-y-4">
-        <h3 className="text-xl font-bold text-blue-400 tracking-tight">3. Governance & Policy Engine</h3>
-        <p className="text-[var(--text-muted)] leading-relaxed">
-          Built around "Mini-Governance" structures. Every department operates within defined risk thresholds.
-        </p>
-        <div className="bg-[var(--bg-surface)] p-6 rounded-xl border border-[var(--border-base)] font-mono text-xs overflow-hidden">
-          <div className="text-[var(--text-tertiary)] mb-2">// Example Policy Configuration</div>
-          <div className="text-emerald-400">"Finance Dept" : {'{'}</div>
-          <div className="pl-4 text-blue-300">"allowAutonomousDrafting": true,</div>
-          <div className="pl-4 text-rose-300">"requireDualDualApprovalAmountsOver": 5000,</div>
-          <div className="pl-4 text-amber-300">"haltOnComplianceRiskScoreOver": 75,</div>
-          <div className="pl-4 text-blue-300">"escalationPath": ["Fin-Exec-Agent", "Human-CFO"]</div>
-          <div className="text-emerald-400">{'}'}</div>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <h3 className="text-xl font-bold text-blue-400 tracking-tight">4. Autonomy Model & Routing</h3>
-        <p className="text-[var(--text-muted)] leading-relaxed">
-          The system uses dynamic cost/latency routing (Triage protocol).
-        </p>
-        <ul className="space-y-3 text-sm text-[var(--text-secondary)]">
-           <li className="flex gap-3"><span className="text-[var(--text-tertiary)] font-bold">L1-L2</span> <span><strong>Assisted:</strong> Low risk, predictable tasks. Routed to hyper-fast Local LLMs or small models. Results always require human click-to-approve.</span></li>
-           <li className="flex gap-3"><span className="text-[var(--text-tertiary)] font-bold">L3-L4</span> <span><strong>Managed:</strong> Departmental workflows. Handled by domain-specific agents. Overwatch monitors continuously.</span></li>
-           <li className="flex gap-3"><span className="text-[var(--text-tertiary)] font-bold">L5</span> <span><strong>Autonomous:</strong> Organization-wide initiatives. Coordinated by Executive agents and the Main Brain, utilizing top-tier reasoning models.</span></li>
-        </ul>
-      </section>
-
-      <section className="space-y-4">
-        <h3 className="text-xl font-bold text-blue-400 tracking-tight">5. Suggested Platform Names</h3>
-        <div className="flex flex-wrap gap-3 mt-2">
-          {['OrchestrOS', 'GovernAI OS', 'CommandGrid', 'AgentHQ', 'SynapseOps', 'Nexus Command', 'CortexGrid'].map(name => (
-             <span key={name} className="px-3 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-full text-sm text-[var(--text-secondary)]">{name}</span>
-          ))}
-        </div>
-      </section>
+                      if (targetNodeId && targetNodeId !== node.id) {
+                        const draggedAgent = agents.find(a => a.id === node.id);
+                        const targetAgent = agents.find(a => a.id === targetNodeId);
+                        if (draggedAgent && targetAgent) {
+                          try {
+                            showToast(`Updating ${draggedAgent.name}'s manager to ${targetAgent.name}...`);
+                            await fetchApi(`/agents/${node.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ reportingManager: targetNodeId })
+                            });
+                            loadAgents();
+                          } catch (error) {
+                            console.error(error);
+                            showToast(`Failed to update ${draggedAgent.name}`);
+                          }
+                        }
+                      }
+                      setDraggedNodeId(null);
+                      setTargetNodeId(null);
+                    }}
+                    style={{ cursor: draggedNodeId === node.id ? 'grabbing' : 'grab', touchAction: 'none' }}
+                  >
+                    <motion.circle
+                      r={30}
+                      fill={node.status === 'active' ? '#3b82f6' : '#64748b'}
+                      animate={{
+                         stroke: targetNodeId === node.id ? '#22c55e' : '#1e293b',
+                         strokeWidth: targetNodeId === node.id ? 5 : 3
+                      }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    />
+                    <text
+                      dy={-40}
+                      textAnchor="middle"
+                      fill="#e2e8f0"
+                      fontSize="14px"
+                      fontWeight="bold"
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {node.name}
+                    </text>
+                    <text
+                      dy={45}
+                      textAnchor="middle"
+                      fill="#94a3b8"
+                      fontSize="12px"
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {node.role}
+                    </text>
+                  </motion.g>
+                ))}
+              </AnimatePresence>
+            </g>
+          </g>
+        </svg>
+      </div>
     </div>
   );
 }
+

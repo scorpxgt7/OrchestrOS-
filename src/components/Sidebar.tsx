@@ -3,14 +3,20 @@ import {
   Users,
   KanbanSquare,
   ShieldAlert,
+  ShieldCheck,
   BrainCircuit,
   Database,
   Settings,
   Activity,
   CheckCircle,
   Workflow,
-  FileText
+  FileText,
+  Eye,
+  LogOut,
+  Plus
 } from 'lucide-react';
+import { auth } from '../lib/firebase';
+import { signOut } from 'firebase/auth';
 
 interface SidebarProps {
   currentView: string;
@@ -22,9 +28,11 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { id: 'dashboard', label: 'Command Center', icon: LayoutDashboard },
     { id: 'org', label: 'Organization Builder', icon: Users },
     { id: 'agents', label: 'Agent Hierarchy', icon: BrainCircuit },
+    { id: 'agent-builder', label: 'Agent Builder', icon: Plus },
     { id: 'evaluations', label: 'Agent Performance', icon: Activity },
     { id: 'workflows', label: 'Workflows', icon: KanbanSquare },
-    { id: 'governance', label: 'Governance & Risk', icon: ShieldAlert },
+    { id: 'overwatch', label: 'Overwatch Monitor', icon: Eye },
+    { id: 'governance', label: 'Governance & Risk', icon: ShieldCheck },
     { id: 'audit-logs', label: 'Audit Logs', icon: FileText },
     { id: 'approvals', label: 'Approval Queue', icon: CheckCircle },
     { id: 'memory', label: 'Memory Center', icon: Database },
@@ -32,6 +40,10 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { id: 'integrations', label: 'Integrations', icon: Settings },
     { id: 'architecture', label: 'System Architecture', icon: BrainCircuit },
   ];
+
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
 
   return (
     <div className="flex flex-col w-64 bg-[var(--bg-base)] border-r border-[var(--border-base)] text-[var(--text-secondary)] h-screen font-sans">
@@ -45,7 +57,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
         </div>
       </div>
 
-      <nav className="flex-1 px-4 space-y-1">
+      <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.id || (currentView === 'agent-builder' && item.id === 'agents');
@@ -66,7 +78,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
         })}
       </nav>
 
-      <div className="p-4 mt-auto border-t border-[var(--border-base)]">
+      <div className="p-4 mt-auto border-t border-[var(--border-base)] space-y-1">
         <button 
           onClick={() => onViewChange('settings')}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
@@ -74,6 +86,13 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
         >
           <Settings className={`w-4 h-4 ${currentView === 'settings' ? 'text-blue-400' : ''}`} />
           Settings
+        </button>
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-[var(--text-muted)] hover:text-rose-400 hover:bg-rose-500/10"
+        >
+          <LogOut className="w-4 h-4" />
+          Log Out
         </button>
       </div>
     </div>

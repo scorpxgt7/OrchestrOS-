@@ -4,6 +4,7 @@ import { Lock, ShieldAlert, Key, Unlock, Clock, Eye, EyeOff, User, RefreshCw, Se
 import { auditService } from '../services/auditService';
 import { useToast } from '../contexts/ToastContext';
 import { fetchApi } from '../lib/api';
+import { auth } from '../lib/firebase';
 
 export function LockScreen() {
   const { showToast } = useToast();
@@ -31,10 +32,10 @@ export function LockScreen() {
     const fetchUser = async () => {
       try {
         const org = await fetchApi('/organizations/current');
-        // Let's also fetch user if possible, otherwise construct from current context
+        const firebaseUser = auth.currentUser;
         if (org) {
           setCurrentUser({
-            email: 'scorpxgt7@gmail.com', // default user email
+            email: firebaseUser?.email || 'User',
             orgName: org.name || 'OrchestrOS'
           });
           if (org.settings?.inactivityLockEnabled !== undefined) {
@@ -43,7 +44,8 @@ export function LockScreen() {
         }
       } catch (err) {
         console.error('Failed to load user for lock screen:', err);
-        setCurrentUser({ email: 'scorpxgt7@gmail.com', orgName: 'OrchestrOS' });
+        const firebaseUser = auth.currentUser;
+        setCurrentUser({ email: firebaseUser?.email || 'User', orgName: 'OrchestrOS' });
       }
     };
     fetchUser();

@@ -1,18 +1,19 @@
 import { Router } from 'express';
-import { db } from '../../db';
-import { integrations, organizations } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import { db } from '../../db/index.ts';
+import { integrations, organizations } from '../../db/schema.ts';
+import { eq, and } from 'drizzle-orm';
+import { requireAuth } from '../../middleware/auth.ts';
 
 const router = Router();
 
 // Get all integrations
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req: any, res) => {
   try {
-    const defaultOrg = await db.query.organizations.findFirst();
-    if (!defaultOrg) return res.json([]);
+    const user = req.user;
+    if (!user?.organizationId) return res.status(400).json({ error: 'No organization' });
     
     const results = await db.query.integrations.findMany({
-      where: eq(integrations.organizationId, defaultOrg.id as number),
+      where: eq(integrations.organizationId, user.organizationId),
       orderBy: (integrations, { desc }) => [desc(integrations.createdAt)],
     });
     res.json(results);
@@ -22,14 +23,17 @@ router.get('/', async (req, res) => {
 });
 
 // Update integration status
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, async (req: any, res) => {
   try {
+    const user = req.user;
+    if (!user?.organizationId) return res.status(400).json({ error: 'No organization' });
+
     const { id } = req.params;
     const { status, lastSync } = req.body;
     
     const [updated] = await db.update(integrations)
       .set({ status, lastSync, updatedAt: new Date() })
-      .where(eq(integrations.id, id))
+      .where(and(eq(integrations.id, id), eq(integrations.organizationId, user.organizationId)))
       .returning();
       
     if (!updated) return res.status(404).json({ error: 'Integration not found' });
@@ -40,16 +44,17 @@ router.put('/:id', async (req, res) => {
 });
 
 // Add a new integration
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req: any, res) => {
   try {
+    const user = req.user;
+    if (!user?.organizationId) return res.status(400).json({ error: 'No organization' });
+
     const { id, name, category, status, icon, lastSync } = req.body;
-    const defaultOrg = await db.query.organizations.findFirst();
-    if (!defaultOrg) return res.status(400).json({ error: 'No organization found' });
     
     const [newIntegration] = await db.insert(integrations)
       .values({
         id,
-        organizationId: defaultOrg.id as number,
+        organizationId: user.organizationId,
         name,
         category,
         status,

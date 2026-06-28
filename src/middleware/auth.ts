@@ -54,6 +54,14 @@ export const requireAuth = async (
         organizationId: dbUsers[0].organizationId,
       };
       next();
+    } else if (req.path === '/sync' || req.originalUrl === '/api/auth/sync') {
+      // Allow the sync route to proceed so it can create the user
+      req.user = {
+        ...decodedToken,
+        id: 0,
+        organizationId: null,
+      };
+      next();
     } else {
       res.status(401).json({ error: 'Unauthorized: User not found in database' });
     }
