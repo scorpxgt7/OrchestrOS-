@@ -99,9 +99,9 @@ router.post('/execute', requireAuth, async (req: any, res) => {
         // Automatically save insights or rules to memory
         const newRecord = await db.insert(memoryRecords).values({
           organizationId: user.organizationId,
-          category: call.args.category || 'org',
-          content: call.args.content || JSON.stringify(call.args),
-          metadata: { title: call.args.title || 'Brain Insight', source: 'Main Brain Execution' }
+          category: String(call.args.category || 'org'),
+          content: String(call.args.content || JSON.stringify(call.args)),
+          metadata: { title: String(call.args.title || 'Brain Insight'), source: 'Main Brain Execution' }
         }).returning();
         executionResult = { savedMemory: true, id: newRecord[0].id, details: call.args };
       }

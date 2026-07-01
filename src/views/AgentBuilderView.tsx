@@ -146,7 +146,7 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Primary Prompt / Mission Directive</label>
+              <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Role Description / Mission Directive</label>
               <textarea 
                 rows={4}
                 value={mission}

@@ -13,7 +13,8 @@ import {
   FileText,
   Eye,
   LogOut,
-  Plus
+  Plus,
+  Youtube
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -37,6 +38,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { id: 'approvals', label: 'Approval Queue', icon: CheckCircle },
     { id: 'memory', label: 'Memory Center', icon: Database },
     { id: 'automations', label: 'Automations', icon: Workflow },
+    { id: 'autotube', label: 'AutoTube Agent', icon: Youtube },
     { id: 'integrations', label: 'Integrations', icon: Settings },
     { id: 'architecture', label: 'System Architecture', icon: BrainCircuit },
   ];

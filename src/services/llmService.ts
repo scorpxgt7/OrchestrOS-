@@ -122,7 +122,7 @@ export const llmService = {
     };
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash",
       contents: `Based on the following execution context, decide if any external action must be taken immediately. Context: "${context}"`,
       config: {
         systemInstruction: "You are the Main Brain's Execution Context router. You analyze incoming context and invoke the most appropriate external function (sendNotification, blockWorkflow, approveAction, saveMemory). If no action is needed, output a JSON object with { \"status\": \"no_action_needed\" } without using any tools.",

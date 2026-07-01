@@ -296,7 +296,7 @@ export function ApprovalQueueView({ onViewChange }: { onViewChange?: (view: stri
                       <div className="flex gap-3 pt-2">
                         <button 
                           type="button" 
-                          onClick={() => handleAction(task.id, 'approve', task.assignedAgentId)}
+                          onClick={() => handleTaskAction(task.id, 'approve', task.assignedAgentId)}
                           className="flex-1 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                         >
                           <Check className="w-4 h-4" />
@@ -304,7 +304,7 @@ export function ApprovalQueueView({ onViewChange }: { onViewChange?: (view: stri
                         </button>
                         <button 
                           type="button" 
-                          onClick={() => handleAction(task.id, 'deny', task.assignedAgentId)}
+                          onClick={() => handleTaskAction(task.id, 'deny', task.assignedAgentId)}
                           className="flex-1 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/20 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                         >
                           <X className="w-4 h-4" />

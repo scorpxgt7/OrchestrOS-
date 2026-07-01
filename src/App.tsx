@@ -16,6 +16,7 @@ import { IntegrationsView } from './views/IntegrationsView';
 import { SettingsView } from './views/SettingsView';
 import { EvaluationsView } from './views/EvaluationsView';
 import { OverwatchView } from './views/OverwatchView';
+import AutoTubeView from './views/AutoTubeView';
 import { ResourceUsageMonitor } from './components/ResourceUsageMonitor';
 import { GlobalActivityFeed } from './components/GlobalActivityFeed';
 import { LockScreen } from './components/LockScreen';
@@ -153,6 +154,8 @@ export default function App() {
         return <SettingsView theme={theme} setTheme={setTheme} accentColor={accentColor} setAccentColor={setAccentColor} />;
       case 'architecture':
         return <ArchitectureView />;
+      case 'autotube':
+        return <div className="p-8"><AutoTubeView /></div>;
       default:
         return (
           <div className="p-8 flex items-center justify-center h-full text-[var(--text-tertiary)]">
