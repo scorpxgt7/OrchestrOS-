@@ -32,9 +32,29 @@ export async function getOrCreateUser(uid: string, email: string) {
       .returning();
     user = result[0];
   } else {
-    // Update email just in case
+    // If the existing user lacks an organizationId, let's create one and heal their record
+    let orgId = user.organizationId;
+    if (!orgId) {
+      const orgName = email ? `${email.split('@')[0]}'s Organization` : 'My Organization';
+      const orgResult = await db.insert(organizations).values({
+        name: orgName,
+      }).returning();
+      const org = orgResult[0];
+      orgId = org.id;
+
+      // Create a default department
+      await db.insert(departments).values({
+        organizationId: org.id as number,
+        name: 'General Engineering',
+      });
+    }
+
+    // Update email and organizationId
     const result = await db.update(users)
-      .set({ email })
+      .set({ 
+        email,
+        organizationId: orgId,
+      })
       .where(eq(users.uid, uid))
       .returning();
     user = result[0];

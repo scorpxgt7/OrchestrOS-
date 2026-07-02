@@ -3,12 +3,14 @@ import { ArrowLeft, Brain, Command, Cpu, Database, Network, Shield, Zap, Refresh
 import { motion } from 'motion/react';
 import { fetchApi } from '../lib/api';
 import { auditService } from '../services/auditService';
+import { useToast } from '../contexts/ToastContext';
 
 interface AgentBuilderViewProps {
   onViewChange?: (view: string) => void;
 }
 
 export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
+  const { showToast } = useToast();
   const [autonomyLevel, setAutonomyLevel] = useState(3);
   const [selectedMemory, setSelectedMemory] = useState<string[]>(['Global Memory']);
   
@@ -47,7 +49,10 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
   };
 
   const handleProvision = async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      showToast('Please enter an agent name', 'error');
+      return;
+    }
     setIsSubmitting(true);
     try {
       const newAgent = await fetchApi('/agents', {
@@ -74,10 +79,13 @@ export function AgentBuilderView({ onViewChange }: AgentBuilderViewProps) {
         outcome: 'success'
       });
 
+      showToast(`Agent "${name.trim()}" provisioned successfully`, 'success');
+
       // Navigate back to agents list
       if (onViewChange) onViewChange('agents');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      showToast(err?.message || 'Failed to provision agent', 'error');
       setIsSubmitting(false);
     }
   };

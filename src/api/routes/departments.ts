@@ -35,9 +35,9 @@ router.post('/', requireAuth, async (req: any, res) => {
       organizationId: user.organizationId,
     }).returning();
     res.status(201).json(newDept[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to create department' });
+    res.status(500).json({ error: error?.message || 'Failed to create department' });
   }
 });
 
